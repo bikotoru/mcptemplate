@@ -113,6 +113,17 @@ export class CRUDGenerator {
       const lines = text.split('\n');
       return lines.map(line => `${style} ${line}`).join('\n');
     });
+
+    // Helper para obtener el primer elemento de un array
+    this.handlebars.registerHelper('first', (array: any[]) => {
+      return Array.isArray(array) && array.length > 0 ? array[0] : '';
+    });
+
+    // Helper @first para usar dentro de contextos de validación
+    this.handlebars.registerHelper('firstOf', (obj: any, prop: string) => {
+      const array = obj[prop];
+      return Array.isArray(array) && array.length > 0 ? array[0] : '';
+    });
   }
 
   /**
@@ -384,6 +395,22 @@ export class CRUDGenerator {
       '[id]': '[id]' // Preservar [id] para rutas dinámicas de Next.js
     };
 
+    // Manejar casos especiales para páginas
+    if (processedPath.includes('(pages)')) {
+      // Convertir templates como create.page.tsx.template -> create/page.tsx
+      if (processedPath.includes('.page.tsx.template')) {
+        processedPath = processedPath.replace(/([^/]+)\.page\.tsx\.template$/, '$1/page.tsx.template');
+      }
+      // Convertir [id].page.tsx.template -> [id]/page.tsx.template  
+      if (processedPath.includes('[id].page.tsx.template')) {
+        processedPath = processedPath.replace('[id].page.tsx.template', '[id]/page.tsx.template');
+      }
+      // Convertir [id].edit.page.tsx.template -> [id]/edit/page.tsx.template
+      if (processedPath.includes('[id].edit.page.tsx.template')) {
+        processedPath = processedPath.replace('[id].edit.page.tsx.template', '[id]/edit/page.tsx.template');
+      }
+    }
+
     Object.entries(replacements).forEach(([placeholder, replacement]) => {
       processedPath = processedPath.replace(new RegExp(placeholder.replace(/[[\]]/g, '\\$&'), 'g'), replacement);
     });
@@ -396,7 +423,7 @@ export class CRUDGenerator {
    */
   private getFileType(filePath: string): GeneratedFile['type'] {
     if (filePath.includes('/components/')) return 'component';
-    if (filePath.includes('/pages/')) return 'page';
+    if (filePath.includes('/(pages)/') || filePath.includes('/pages/')) return 'page';
     if (filePath.includes('/api/')) return 'api';
     if (filePath.includes('/types/')) return 'type';
     if (filePath.includes('/hooks/')) return 'hook';
@@ -458,14 +485,15 @@ This module provides complete CRUD (Create, Read, Update, Delete) functionality 
 - \`components/${context.ENTITY_NAME}Filter.tsx\` - Advanced filtering component
 - \`components/${context.ENTITY_NAME}Search.tsx\` - Search component with suggestions
 
-### Pages
-- \`pages/${context.ENTITY_NAME_LOWER}/index.tsx\` - Main listing page
-- \`pages/${context.ENTITY_NAME_LOWER}/create.tsx\` - Creation page
-- \`pages/${context.ENTITY_NAME_LOWER}/[id]/edit.tsx\` - Edit page
+### Pages (App Router)
+- \`(pages)/${context.ENTITY_NAME_LOWER}/page.tsx\` - Main listing page
+- \`(pages)/${context.ENTITY_NAME_LOWER}/create/page.tsx\` - Creation page
+- \`(pages)/${context.ENTITY_NAME_LOWER}/[id]/page.tsx\` - Detail page
+- \`(pages)/${context.ENTITY_NAME_LOWER}/[id]/edit/page.tsx\` - Edit page
 
-### API Routes
-- \`api/${context.ENTITY_NAME_LOWER}/index.ts\` - GET (list) and POST (create) operations
-- \`api/${context.ENTITY_NAME_LOWER}/[id].ts\` - GET (detail), PUT (update), and DELETE operations
+### API Routes (App Router)
+- \`api/route.ts\` - GET (list) and POST (create) operations
+- \`api/[id]/route.ts\` - GET (detail), PUT (update), and DELETE operations
 
 ### TypeScript Types
 - \`types/${context.ENTITY_NAME_LOWER}.ts\` - All TypeScript interfaces and types
@@ -521,11 +549,11 @@ function MyComponent() {
 \`\`\`
 
 ### API Endpoints
-- \`GET ${context.API_ENDPOINT}\` - List ${context.ENTITY_NAME_PLURAL_LOWER}
-- \`POST ${context.API_ENDPOINT}\` - Create ${context.ENTITY_NAME_LOWER}
-- \`GET ${context.API_ENDPOINT}/[id]\` - Get ${context.ENTITY_NAME_LOWER} by ID
-- \`PUT ${context.API_ENDPOINT}/[id]\` - Update ${context.ENTITY_NAME_LOWER}
-- \`DELETE ${context.API_ENDPOINT}/[id]\` - Delete ${context.ENTITY_NAME_LOWER}
+- \`GET /api/${context.ENTITY_NAME_LOWER}\` - List ${context.ENTITY_NAME_PLURAL_LOWER}
+- \`POST /api/${context.ENTITY_NAME_LOWER}\` - Create ${context.ENTITY_NAME_LOWER}
+- \`GET /api/${context.ENTITY_NAME_LOWER}/[id]\` - Get ${context.ENTITY_NAME_LOWER} by ID
+- \`PUT /api/${context.ENTITY_NAME_LOWER}/[id]\` - Update ${context.ENTITY_NAME_LOWER}
+- \`DELETE /api/${context.ENTITY_NAME_LOWER}/[id]\` - Delete ${context.ENTITY_NAME_LOWER}
 
 ## Required Dependencies
 

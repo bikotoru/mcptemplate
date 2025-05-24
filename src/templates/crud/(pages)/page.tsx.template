@@ -1,0 +1,150 @@
+/**
+ * Página principal de {{ENTITY_NAME_PLURAL}} - App Router
+ * Lista y gestión de {{ENTITY_NAME_PLURAL_LOWER}}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+'use client';
+
+import { useState } from 'react';
+import { {{ENTITY_NAME}}List } from '../../../components/{{ENTITY_NAME}}List';
+import { {{ENTITY_NAME}}Filter } from '../../../components/{{ENTITY_NAME}}Filter';
+import { {{ENTITY_NAME}}Search } from '../../../components/{{ENTITY_NAME}}Search';
+import { use{{ENTITY_NAME}} } from '../../../hooks/use{{ENTITY_NAME}}';
+import Link from 'next/link';
+
+export default function {{ENTITY_NAME_PLURAL}}Page() {
+  const [filters, setFilters] = useState({});
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState('');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+
+  const {
+    {{ENTITY_NAME_PLURAL_LOWER}},
+    loading,
+    error,
+    pagination,
+    refetch
+  } = use{{ENTITY_NAME}}({
+    filters,
+    search,
+    page,
+    sort,
+    order,
+  });
+
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters);
+    setPage(1); // Reset page when filters change
+  };
+
+  const handleSearchChange = (newSearch: string) => {
+    setSearch(newSearch);
+    setPage(1); // Reset page when search changes
+  };
+
+  const handleSortChange = (field: string) => {
+    if (sort === field) {
+      setOrder(order === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSort(field);
+      setOrder('asc');
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {{ENTITY_NAME_PLURAL}}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Gestiona todos los {{ENTITY_NAME_PLURAL_LOWER}} del sistema
+          </p>
+        </div>
+        
+        {{#if PERMISSIONS.create}}
+        <Link
+          href="/{{ENTITY_NAME_PLURAL_LOWER}}/create"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
+          Crear {{ENTITY_NAME}}
+        </Link>
+        {{/if}}
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Search */}
+          <div className="lg:col-span-2">
+            <{{ENTITY_NAME}}Search
+              value={search}
+              onChange={handleSearchChange}
+              loading={loading}
+            />
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex justify-end items-start">
+            <button
+              onClick={() => refetch()}
+              disabled={loading}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Actualizando...' : 'Actualizar'}
+            </button>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <{{ENTITY_NAME}}Filter
+            filters={filters}
+            onChange={handleFilterChange}
+          />
+        </div>
+      </div>
+
+      {/* Results */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        {error ? (
+          <div className="p-6 text-center">
+            <div className="text-red-600 mb-2">Error al cargar {{ENTITY_NAME_PLURAL_LOWER}}</div>
+            <p className="text-gray-600 text-sm mb-4">{error}</p>
+            <button
+              onClick={() => refetch()}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : (
+          <{{ENTITY_NAME}}List
+            {{ENTITY_NAME_PLURAL_LOWER}}={{ENTITY_NAME_PLURAL_LOWER}}
+            loading={loading}
+            pagination={pagination}
+            currentPage={page}
+            onPageChange={setPage}
+            sort={sort}
+            order={order}
+            onSortChange={handleSortChange}
+            onRefetch={refetch}
+          />
+        )}
+      </div>
+
+      {/* Stats */}
+      {pagination && (
+        <div className="mt-6 text-center text-gray-600 text-sm">
+          Mostrando {pagination.page === 1 ? 1 : ((pagination.page - 1) * pagination.limit) + 1} -{' '}
+          {Math.min(pagination.page * pagination.limit, pagination.total)} de {pagination.total} {{ENTITY_NAME_PLURAL_LOWER}}
+        </div>
+      )}
+    </div>
+  );
+}

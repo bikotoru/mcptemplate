@@ -1,14 +1,14 @@
 /**
- * API Route para {{ENTITY_NAME_PLURAL}} - Operaciones de lista y creación
+ * API Route para {{ENTITY_NAME_PLURAL}} - App Router (route.ts)
  * Generado automáticamente por MCP CRUD Generator
  * Timestamp: {{TIMESTAMP}}
  */
 
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { {{ENTITY_NAME_LOWER}}Schema } from '../../validation/{{ENTITY_NAME_LOWER}}';
+import { {{ENTITY_NAME_LOWER}}Schema } from '../validation/{{ENTITY_NAME_LOWER}}';
 // import { getServerSession } from 'next-auth/next';
-// import { authOptions } from '../auth/[...nextauth]';
+// import { authOptions } from '../../auth/config';
 // import { prisma } from '@/lib/prisma'; // Ajusta según tu ORM
 // import { dbConnect } from '@/lib/mongodb'; // O tu conexión a DB
 
@@ -40,46 +40,31 @@ const querySchema = z.object({
   {{/each}}
 });
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  try {
-    // Verificar autenticación (opcional)
-    // const session = await getServerSession(req, res, authOptions);
-    // if (!session) {
-    //   return res.status(401).json({ error: 'No autorizado' });
-    // }
-
-    switch (req.method) {
-      case 'GET':
-        return await handleGet(req, res);
-      case 'POST':
-        return await handlePost(req, res);
-      default:
-        res.setHeader('Allow', ['GET', 'POST']);
-        return res.status(405).json({ error: `Método ${req.method} no permitido` });
-    }
-  } catch (error) {
-    console.error('Error in {{ENTITY_NAME_LOWER}} API:', error);
-    return res.status(500).json({ 
-      error: 'Error interno del servidor',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-}
-
 /**
  * GET - Obtener lista de {{ENTITY_NAME_PLURAL_LOWER}} con filtros y paginación
  */
-async function handleGet(req: NextApiRequest, res: NextApiResponse) {
-  {{#unless PERMISSIONS.read}}
-  return res.status(403).json({ error: 'No tienes permisos para leer {{ENTITY_NAME_PLURAL_LOWER}}' });
-  {{/unless}}
-
+export async function GET(request: NextRequest) {
   try {
+    // Verificar autenticación (opcional)
+    // const session = await getServerSession(authOptions);
+    // if (!session) {
+    //   return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    // }
+
+    {{#unless PERMISSIONS.read}}
+    return NextResponse.json({ error: 'No tienes permisos para leer {{ENTITY_NAME_PLURAL_LOWER}}' }, { status: 403 });
+    {{/unless}}
+
+    // Extraer parámetros de la URL
+    const { searchParams } = new URL(request.url);
+    const queryParams: Record<string, string> = {};
+    
+    searchParams.forEach((value, key) => {
+      queryParams[key] = value;
+    });
+
     // Validar parámetros de consulta
-    const query = querySchema.parse(req.query);
+    const query = querySchema.parse(queryParams);
     
     const {
       page,
@@ -215,7 +200,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
-    return res.status(200).json({
+    return NextResponse.json({
       data: {{ENTITY_NAME_PLURAL_LOWER}},
       pagination: {
         page,
@@ -238,27 +223,42 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
     });
 
   } catch (error) {
+    console.error('Error in {{ENTITY_NAME_LOWER}} GET API:', error);
+    
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
+      return NextResponse.json({ 
         error: 'Parámetros de consulta inválidos',
         details: error.errors 
-      });
+      }, { status: 400 });
     }
-    throw error;
+    
+    return NextResponse.json({ 
+      error: 'Error interno del servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }
 
 /**
  * POST - Crear nuevo {{ENTITY_NAME_LOWER}}
  */
-async function handlePost(req: NextApiRequest, res: NextApiResponse) {
-  {{#unless PERMISSIONS.create}}
-  return res.status(403).json({ error: 'No tienes permisos para crear {{ENTITY_NAME_PLURAL_LOWER}}' });
-  {{/unless}}
-
+export async function POST(request: NextRequest) {
   try {
+    // Verificar autenticación (opcional)
+    // const session = await getServerSession(authOptions);
+    // if (!session) {
+    //   return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    // }
+
+    {{#unless PERMISSIONS.create}}
+    return NextResponse.json({ error: 'No tienes permisos para crear {{ENTITY_NAME_PLURAL_LOWER}}' }, { status: 403 });
+    {{/unless}}
+
+    // Obtener datos del cuerpo de la petición
+    const body = await request.json();
+    
     // Validar datos del cuerpo de la petición
-    const validatedData = {{ENTITY_NAME_LOWER}}Schema.parse(req.body);
+    const validatedData = {{ENTITY_NAME_LOWER}}Schema.parse(body);
 
     // Procesar relaciones si existen
     const processedData = { ...validatedData };
@@ -310,16 +310,22 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse) {
       updatedAt: new Date(),
     };
 
-    return res.status(201).json(new{{ENTITY_NAME}});
+    return NextResponse.json(new{{ENTITY_NAME}}, { status: 201 });
 
   } catch (error) {
+    console.error('Error in {{ENTITY_NAME_LOWER}} POST API:', error);
+    
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
+      return NextResponse.json({ 
         error: 'Datos inválidos',
         details: error.errors 
-      });
+      }, { status: 400 });
     }
-    throw error;
+    
+    return NextResponse.json({ 
+      error: 'Error interno del servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }
 
@@ -343,7 +349,7 @@ function generateMockData(limit: number, offset: number, filters: any) {
     {{else if (eq type 'email')}}
     {{name}}: `user${i + 1}@example.com`,
     {{else if (eq type 'select')}}
-    {{name}}: {{#if validation.options}}'{{@first validation.options}}'{{else}}'option1'{{/if}},
+    {{name}}: {{#if validation.options}}'{{first validation.options}}'{{else}}'option1'{{/if}},
     {{else if (eq type 'relation')}}
     {{name}}: {{#if relation.multiple}}[{ {{relation.valueField}}: `rel_${i + 1}`, {{relation.displayField}}: `Relación ${i + 1}` }]{{else}}{ {{relation.valueField}}: `rel_${i + 1}`, {{relation.displayField}}: `Relación ${i + 1}` }{{/if}},
     {{else}}

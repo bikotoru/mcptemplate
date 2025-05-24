@@ -1,0 +1,85 @@
+/**
+ * Página de creación de {{ENTITY_NAME}} - App Router
+ * Formulario para crear nuevo {{ENTITY_NAME_LOWER}}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { {{ENTITY_NAME}}Form } from '../../../../components/{{ENTITY_NAME}}Form';
+import { use{{ENTITY_NAME}} } from '../../../../hooks/use{{ENTITY_NAME}}';
+import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+
+export default function Create{{ENTITY_NAME}}Page() {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { create{{ENTITY_NAME}} } = use{{ENTITY_NAME}}();
+
+  const handleSubmit = async (data: any) => {
+    try {
+      setIsSubmitting(true);
+      const new{{ENTITY_NAME}} = await create{{ENTITY_NAME}}(data);
+      
+      // Redirect to the new item's page or back to list
+      router.push(`/{{ENTITY_NAME_PLURAL_LOWER}}/${new{{ENTITY_NAME}}.id}`);
+      
+      // Or redirect to list:
+      // router.push('/{{ENTITY_NAME_PLURAL_LOWER}}');
+      
+    } catch (error) {
+      console.error('Error creating {{ENTITY_NAME_LOWER}}:', error);
+      // Error handling is done in the form component
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    router.back();
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <Link
+            href="/{{ENTITY_NAME_PLURAL_LOWER}}"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+            Volver a {{ENTITY_NAME_PLURAL}}
+          </Link>
+        </div>
+        
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Crear {{ENTITY_NAME}}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Completa el formulario para crear un nuevo {{ENTITY_NAME_LOWER}}
+          </p>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <{{ENTITY_NAME}}Form
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          isSubmitting={isSubmitting}
+          submitLabel="Crear {{ENTITY_NAME}}"
+        />
+      </div>
+
+      {/* Help Text */}
+      <div className="mt-6 text-center text-gray-600 text-sm">
+        <p>Los campos marcados con (*) son obligatorios</p>
+      </div>
+    </div>
+  );
+}

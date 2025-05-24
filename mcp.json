@@ -2,7 +2,7 @@
   "mcpServers": {
     "nextjs-crud-generator": {
       "command": "node",
-      "args": ["dist/index.js"],
+      "args": ["F:/mcpcreador/mcpcreadorv2/dist/index.js"],
       "env": {
         "NODE_ENV": "production"
       }

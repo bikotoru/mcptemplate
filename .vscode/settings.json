@@ -24,5 +24,8 @@
     "typescript"
   ],
   "prettier.configPath": ".prettierrc.json",
-  "typescript.preferences.importModuleSpecifier": "relative"
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  }
 }

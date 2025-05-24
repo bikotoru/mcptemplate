@@ -19,7 +19,7 @@ import type {
 } from '../types/{{ENTITY_NAME_LOWER}}';
 
 // Configuración base
-const API_BASE_URL = '{{API_ENDPOINT}}';
+const API_BASE_URL = '/api/{{ENTITY_NAME_LOWER}}';
 const QUERY_KEY = '{{ENTITY_NAME_LOWER}}';
 
 /**
