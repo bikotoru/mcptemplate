@@ -1,0 +1,323 @@
+/**
+ * Esquemas de validación Zod para {{ ENTITY_NAME }}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{ TIMESTAMP }}
+ */
+
+import { z } from 'zod';
+
+{% for field in FIELDS %}
+{% if field.type == 'relation' %}
+// Schema para {{ field.relation.relationEntity }}
+const {{ field.relation.relationEntity|lower }}SelectSchema = z.object({
+  {{ field.relation.valueField }}: z.string().min(1, '{{ field.relation.relationEntity }} ID es requerido'),
+  {{ field.relation.displayField }}: z.string().min(1, '{{ field.relation.relationEntity }} nombre es requerido'),
+});
+
+{% endif %}
+{% endfor %}
+
+// Schema base para {{ ENTITY_NAME }}
+export const {{ ENTITY_NAME_LOWER }}Schema = z.object({
+  {% for field in FIELDS %}
+  
+  // Campo: {{ field.label }}
+  {% if field.type == 'text' %}
+  {{ field.name }}: z.string()
+    {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
+    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
+    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %}
+    {% if field.validation.pattern %}.regex(/{{ field.validation.pattern }}/, '{{ field.label }} tiene un formato inválido'){% endif %},
+  
+  {% elif field.type == 'email' %}
+  {{ field.name }}: z.string()
+    {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
+    .email('{{ field.label }} debe ser un email válido'),
+  
+  {% elif field.type == 'password' %}
+  {{ field.name }}: z.string()
+    {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
+    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
+    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %}
+    {% if field.validation.pattern %}.regex(/{{ field.validation.pattern }}/, '{{ field.label }} debe cumplir con el formato requerido'){% endif %},
+  
+  {% elif field.type == 'number' %}
+  {{ field.name }}: z.number({
+      required_error: '{{ field.label }} es requerido',
+      invalid_type_error: '{{ field.label }} debe ser un número'
+    })
+    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe ser mayor o igual a {{ field.validation.min }}'){% endif %}
+    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe ser menor o igual a {{ field.validation.max }}'){% endif %}
+    {% if not field.required %}.optional(){% endif %},
+  
+  {% elif field.type == 'textarea' %}
+  {{ field.name }}: z.string()
+    {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
+    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
+    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %},
+  
+  {% elif field.type == 'select' %}
+  {{ field.name }}: z.enum([
+      {% for option in field.validation.options %}
+      '{{ option }}'{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ], {
+      required_error: '{{ field.label }} es requerido',
+      invalid_type_error: '{{ field.label }} debe ser una opción válida'
+    }){% if not field.required %}.optional(){% endif %},
+  
+  {% elif field.type == 'boolean' %}
+  {{ field.name }}: z.boolean({
+      required_error: '{{ field.label }} es requerido',
+      invalid_type_error: '{{ field.label }} debe ser verdadero o falso'
+    }){% if not field.required %}.optional(){% endif %},
+  
+  {% elif field.type == 'date' %}
+  {{ field.name }}: z.date({
+      required_error: '{{ field.label }} es requerido',
+      invalid_type_error: '{{ field.label }} debe ser una fecha válida'
+    }){% if not field.required %}.optional(){% endif %},
+  
+  {% elif field.type == 'file' %}
+  {{ field.name }}: z.string()
+    {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
+    .url('{{ field.label }} debe ser una URL válida'),
+  
+  {% elif field.type == 'relation' %}
+  {% if field.relation.multiple %}
+  {{ field.name }}: z.array({{ field.relation.relationEntity|lower }}SelectSchema)
+    {% if field.required %}.min(1, 'Debe seleccionar al menos un {{ field.label }}'){% else %}.optional(){% endif %},
+  {% else %}
+  {{ field.name }}: {{ field.relation.relationEntity|lower }}SelectSchema
+    {% if not field.required %}.optional().nullable(){% endif %},
+  {% endif %}
+  {% endif %}
+  
+  {% endfor %}
+});
+
+// Schema para crear {{ ENTITY_NAME }} (sin ID ni timestamps)
+export const create{{ ENTITY_NAME }}Schema = {{ ENTITY_NAME_LOWER }}Schema;
+
+// Schema para actualizar {{ ENTITY_NAME }} (todos los campos opcionales)
+export const update{{ ENTITY_NAME }}Schema = {{ ENTITY_NAME_LOWER }}Schema.partial();
+
+// Schema para parámetros de consulta de lista
+export const {{ ENTITY_NAME_LOWER }}ListQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(10),
+  search: z.string().optional(),
+  sort: z.enum([
+    {% for field in FIELDS %}
+    {% if field.sortable %}
+    '{{ field.name }}',
+    {% endif %}
+    {% endfor %}
+    'createdAt',
+    'updatedAt'
+  ]).optional(),
+  order: z.enum(['asc', 'desc']).default('asc'),
+});
+
+// Schema para filtros específicos
+export const {{ ENTITY_NAME_LOWER }}FiltersSchema = z.object({
+  {% for field in FIELDS %}
+  {% if field.filterable %}
+  {% if field.type == 'number' %}
+  {{ field.name }}_min: z.coerce.number().optional(),
+  {{ field.name }}_max: z.coerce.number().optional(),
+  {% elif field.type == 'date' %}
+  {{ field.name }}_start: z.coerce.date().optional(),
+  {{ field.name }}_end: z.coerce.date().optional(),
+  {% elif field.type == 'boolean' %}
+  {{ field.name }}: z.coerce.boolean().optional(),
+  {% elif field.type == 'relation' %}
+  {{ field.name }}: z.string().transform(val => val.split(',')).optional(),
+  {% elif field.type == 'select' %}
+  {{ field.name }}: z.string().transform(val => val.split(',')).optional(),
+  {% else %}
+  {{ field.name }}: z.string().optional(),
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+});
+
+// Schema combinado para consultas de lista
+export const {{ ENTITY_NAME_LOWER }}SearchSchema = {{ ENTITY_NAME_LOWER }}ListQuerySchema.merge({{ ENTITY_NAME_LOWER }}FiltersSchema);
+
+// Schemas para formularios (con transformaciones para inputs)
+export const {{ ENTITY_NAME_LOWER }}FormSchema = z.object({
+  {% for field in FIELDS %}
+  
+  {% if field.type == 'number' %}
+  {{ field.name }}: z.union([
+    z.number(),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num)) {
+        throw new Error('{{ field.label }} debe ser un número válido');
+      }
+      return num;
+    })
+  ]){% if not field.required %}.optional(){% endif %},
+  
+  {% elif field.type == 'date' %}
+  {{ field.name }}: z.union([
+    z.date(),
+    z.string().transform((val) => {
+      const date = new Date(val);
+      if (isNaN(date.getTime())) {
+        throw new Error('{{ field.label }} debe ser una fecha válida');
+      }
+      return date;
+    })
+  ]){% if not field.required %}.optional(){% endif %},
+  
+  {% elif field.type == 'file' %}
+  {{ field.name }}: z.union([
+    z.string().url('{{ field.label }} debe ser una URL válida'),
+    z.instanceof(File, { message: '{{ field.label }} debe ser un archivo' })
+  ]){% if not field.required %}.optional(){% endif %},
+  
+  {% else %}
+  // Usar el schema base para otros tipos
+  {{ field.name }}: {{ ENTITY_NAME_LOWER }}Schema.shape.{{ field.name }},
+  {% endif %}
+  
+  {% endfor %}
+});
+
+// Schemas para validación de campos individuales
+export const {{ ENTITY_NAME_LOWER }}FieldSchemas = {
+  {% for field in FIELDS %}
+  {{ field.name }}: {{ ENTITY_NAME_LOWER }}Schema.shape.{{ field.name }},
+  {% endfor %}
+};
+
+// Schema para operaciones en lote
+export const {{ ENTITY_NAME_LOWER }}BulkOperationSchema = z.object({
+  ids: z.array(z.string().min(1, 'ID inválido')).min(1, 'Debe seleccionar al menos un elemento'),
+  operation: z.enum(['delete', 'update']),
+  data: z.any().optional() // Para operaciones de actualización en lote
+});
+
+{% for field in FIELDS %}
+{% if field.type == 'relation' %}
+// Schema para búsqueda de {{ field.relation.relationEntity }}
+export const {{ field.relation.relationEntity|lower }}SearchSchema = z.object({
+  q: z.string().min({{ field.relation.minChars }}, 'Mínimo {{ field.relation.minChars }} caracteres para buscar'),
+  fields: z.string().default('{% for searchField in field.relation.searchFields %}{{ searchField }}{% if not loop.last %},{% endif %}{% endfor %}'),
+  limit: z.coerce.number().min(1).max(50).default(10),
+});
+
+{% endif %}
+{% endfor %}
+
+// Funciones de validación auxiliares
+export const {{ ENTITY_NAME_LOWER }}Validators = {
+  /**
+   * Valida un {{ ENTITY_NAME_LOWER }} completo
+   */
+  validate{{ ENTITY_NAME }}: (data: unknown) => {
+    return {{ ENTITY_NAME_LOWER }}Schema.safeParse(data);
+  },
+
+  /**
+   * Valida datos para crear {{ ENTITY_NAME_LOWER }}
+   */
+  validateCreate: (data: unknown) => {
+    return create{{ ENTITY_NAME }}Schema.safeParse(data);
+  },
+
+  /**
+   * Valida datos para actualizar {{ ENTITY_NAME_LOWER }}
+   */
+  validateUpdate: (data: unknown) => {
+    return update{{ ENTITY_NAME }}Schema.safeParse(data);
+  },
+
+  /**
+   * Valida parámetros de búsqueda
+   */
+  validateSearch: (data: unknown) => {
+    return {{ ENTITY_NAME_LOWER }}SearchSchema.safeParse(data);
+  },
+
+  /**
+   * Valida datos de formulario
+   */
+  validateForm: (data: unknown) => {
+    return {{ ENTITY_NAME_LOWER }}FormSchema.safeParse(data);
+  },
+
+  {% for field in FIELDS %}
+  /**
+   * Valida el campo {{ field.name }}
+   */
+  validate{{ field.name|title }}: (value: unknown) => {
+    return {{ ENTITY_NAME_LOWER }}FieldSchemas.{{ field.name }}.safeParse(value);
+  },
+
+  {% endfor %}
+};
+
+// Tipos derivados de los schemas
+export type {{ ENTITY_NAME }}ValidationInput = z.input<typeof {{ ENTITY_NAME_LOWER }}Schema>;
+export type {{ ENTITY_NAME }}ValidationOutput = z.output<typeof {{ ENTITY_NAME_LOWER }}Schema>;
+export type Create{{ ENTITY_NAME }}ValidationInput = z.input<typeof create{{ ENTITY_NAME }}Schema>;
+export type Update{{ ENTITY_NAME }}ValidationInput = z.input<typeof update{{ ENTITY_NAME }}Schema>;
+export type {{ ENTITY_NAME }}FormValidationInput = z.input<typeof {{ ENTITY_NAME_LOWER }}FormSchema>;
+export type {{ ENTITY_NAME }}SearchValidationInput = z.input<typeof {{ ENTITY_NAME_LOWER }}SearchSchema>;
+
+// Constantes de validación
+export const {{ ENTITY_NAME_UPPER }}_VALIDATION_MESSAGES = {
+  REQUIRED: (field: string) => `${field} es requerido`,
+  INVALID_TYPE: (field: string, type: string) => `${field} debe ser de tipo ${type}`,
+  MIN_LENGTH: (field: string, min: number) => `${field} debe tener al menos ${min} caracteres`,
+  MAX_LENGTH: (field: string, max: number) => `${field} debe tener máximo ${max} caracteres`,
+  MIN_VALUE: (field: string, min: number) => `${field} debe ser mayor o igual a ${min}`,
+  MAX_VALUE: (field: string, max: number) => `${field} debe ser menor o igual a ${max}`,
+  INVALID_EMAIL: (field: string) => `${field} debe ser un email válido`,
+  INVALID_URL: (field: string) => `${field} debe ser una URL válida`,
+  INVALID_DATE: (field: string) => `${field} debe ser una fecha válida`,
+  INVALID_FORMAT: (field: string) => `${field} tiene un formato inválido`,
+} as const;
+
+// Helper para formatear errores de validación
+export function formatValidationErrors(errors: z.ZodError): Record<string, string> {
+  const formatted: Record<string, string> = {};
+  
+  errors.errors.forEach((error) => {
+    const path = error.path.join('.');
+    formatted[path] = error.message;
+  });
+  
+  return formatted;
+}
+
+// Helper para validar y formatear errores en una sola función
+export function validateAndFormat<T>(
+  schema: z.ZodSchema<T>,
+  data: unknown
+): { success: true; data: T } | { success: false; errors: Record<string, string> } {
+  const result = schema.safeParse(data);
+  
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  
+  return {
+    success: false,
+    errors: formatValidationErrors(result.error)
+  };
+}
+
+// Exportar schemas por defecto
+export {
+  {{ ENTITY_NAME_LOWER }}Schema as default,
+  create{{ ENTITY_NAME }}Schema,
+  update{{ ENTITY_NAME }}Schema,
+  {{ ENTITY_NAME_LOWER }}FormSchema,
+  {{ ENTITY_NAME_LOWER }}SearchSchema,
+  {{ ENTITY_NAME_LOWER }}FiltersSchema
+};

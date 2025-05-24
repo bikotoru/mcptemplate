@@ -1,0 +1,274 @@
+/**
+ * Componente de filtros para {{ ENTITY_NAME_PLURAL }}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{ TIMESTAMP }}
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { XMarkIcon, FunnelIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { RelationFilter } from '@/components/ui/RelationFilter';
+import { Badge } from '@/components/ui/Badge';
+import { useDebounce } from '@/hooks/useDebounce';
+
+interface FilterValues {
+  {% for field in FIELDS %}
+  {% if field.filterable %}
+  {{ field.name }}?: {% if field.type == 'number' %}{ min?: number; max?: number }{% elif field.type == 'date' %}{ start?: Date; end?: Date }{% elif field.type == 'boolean' %}boolean{% elif field.type == 'relation' %}string[]{% elif field.type == 'select' %}string[]{% else %}string{% endif %};
+  {% endif %}
+  {% endfor %}
+}
+
+interface {{ ENTITY_NAME }}FilterProps {
+  filters: FilterValues;
+  onFilterChange: (filters: FilterValues) => void;
+  className?: string;
+}
+
+export const {{ ENTITY_NAME }}Filter: React.FC<{{ ENTITY_NAME }}FilterProps> = ({
+  filters,
+  onFilterChange,
+  className = ''
+}) => {
+  const [localFilters, setLocalFilters] = useState<FilterValues>(filters);
+  const debouncedFilters = useDebounce(localFilters, 500);
+
+  // Sincronizar filtros con delay
+  useEffect(() => {
+    onFilterChange(debouncedFilters);
+  }, [debouncedFilters, onFilterChange]);
+
+  // Actualizar filtros locales cuando cambien los externos
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
+  const updateFilter = useCallback((field: string, value: any) => {
+    setLocalFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const clearFilter = useCallback((field: string) => {
+    setLocalFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[field as keyof FilterValues];
+      return newFilters;
+    });
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setLocalFilters({});
+  }, []);
+
+  // Contar filtros activos
+  const activeFiltersCount = Object.keys(localFilters).filter(key => {
+    const value = localFilters[key as keyof FilterValues];
+    if (value === null || value === undefined || value === '') return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') {
+      return Object.values(value).some(v => v !== null && v !== undefined && v !== '');
+    }
+    return true;
+  }).length;
+
+  return (
+    <div className={`space-y-6 ${className}`}>
+      {/* Header de filtros */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <FunnelIcon className="w-5 h-5 text-gray-500" />
+          <h3 className="text-lg font-medium text-gray-900">Filtros</h3>
+          {activeFiltersCount > 0 && (
+            <Badge variant="primary" size="sm">
+              {activeFiltersCount}
+            </Badge>
+          )}
+        </div>
+        
+        {activeFiltersCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <TrashIcon className="w-4 h-4 mr-1" />
+            Limpiar todo
+          </Button>
+        )}
+      </div>
+
+      {/* Filtros aplicados */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {% for field in FIELDS %}
+          {% if field.filterable %}
+          {localFilters.{{ field.name }} && (
+            <Badge
+              variant="secondary"
+              className="flex items-center space-x-1"
+            >
+              <span>{{ field.label }}: 
+                {% if field.type == 'relation' %}
+                {Array.isArray(localFilters.{{ field.name }}) ? `${localFilters.{{ field.name }}.length} seleccionado${localFilters.{{ field.name }}.length !== 1 ? 's' : ''}` : localFilters.{{ field.name }} }
+                {% elif field.type == 'boolean' %}
+                {localFilters.{{ field.name }} ? 'Sí' : 'No'}
+                {% elif field.type == 'number' %}
+                {localFilters.{{ field.name }}.min && localFilters.{{ field.name }}.max 
+                  ? `${localFilters.{{ field.name }}.min} - ${localFilters.{{ field.name }}.max}`
+                  : localFilters.{{ field.name }}.min 
+                    ? `≥ ${localFilters.{{ field.name }}.min}`
+                    : `≤ ${localFilters.{{ field.name }}.max}`
+                }
+                {% elif field.type == 'date' %}
+                {localFilters.{{ field.name }}.start && localFilters.{{ field.name }}.end
+                  ? `${localFilters.{{ field.name }}.start.toLocaleDateString()} - ${localFilters.{{ field.name }}.end.toLocaleDateString()}`
+                  : localFilters.{{ field.name }}.start
+                    ? `Desde ${localFilters.{{ field.name }}.start.toLocaleDateString()}`
+                    : `Hasta ${localFilters.{{ field.name }}.end.toLocaleDateString()}`
+                }
+                {% else %}
+                {localFilters.{{ field.name }} }
+                {% endif %}
+              </span>
+              <button
+                onClick={() => clearFilter('{{ field.name }}')}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
+          {% endif %}
+          {% endfor %}
+        </div>
+      )}
+
+      {/* Campos de filtro */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for field in FIELDS %}
+        {% if field.filterable %}
+        
+        {/* Filtro: {{ field.label }} */}
+        <div className="space-y-2">
+          {% if field.type == 'text' %}
+          <Input
+            label="{{ field.label }}"
+            placeholder="Filtrar por {{ field.label|lower }}"
+            value={localFilters.{{ field.name }} || ''}
+            onChange={(e) => updateFilter('{{ field.name }}', e.target.value || undefined)}
+            size="sm"
+          />
+          
+          {% elif field.type == 'number' %}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">{{ field.label }}</label>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                placeholder="Mínimo"
+                type="number"
+                value={localFilters.{{ field.name }}?.min?.toString() || ''}
+                onChange={(e) => updateFilter('{{ field.name }}', {
+                  ...localFilters.{{ field.name }},
+                  min: e.target.value ? Number(e.target.value) : undefined
+                })}
+                size="sm"
+              />
+              <Input
+                placeholder="Máximo"
+                type="number"
+                value={localFilters.{{ field.name }}?.max?.toString() || ''}
+                onChange={(e) => updateFilter('{{ field.name }}', {
+                  ...localFilters.{{ field.name }},
+                  max: e.target.value ? Number(e.target.value) : undefined
+                })}
+                size="sm"
+              />
+            </div>
+          </div>
+          
+          {% elif field.type == 'select' %}
+          <Select
+            label="{{ field.label }}"
+            placeholder="Filtrar por {{ field.label|lower }}"
+            value={Array.isArray(localFilters.{{ field.name }}) ? localFilters.{{ field.name }} : localFilters.{{ field.name }} ? [localFilters.{{ field.name }}] : []}
+            onChange={(value) => updateFilter('{{ field.name }}', Array.isArray(value) ? value : [value])}
+            multiple
+            options={[
+              {% for option in field.validation.options %}
+              { value: "{{ option }}", label: "{{ option }}" },
+              {% endfor %}
+            ]}
+            size="sm"
+          />
+          
+          {% elif field.type == 'boolean' %}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">{{ field.label }}</label>
+            <div className="space-y-1">
+              <Checkbox
+                label="Sí"
+                checked={localFilters.{{ field.name }} === true}
+                onChange={(checked) => updateFilter('{{ field.name }}', checked ? true : undefined)}
+              />
+              <Checkbox
+                label="No"
+                checked={localFilters.{{ field.name }} === false}
+                onChange={(checked) => updateFilter('{{ field.name }}', checked ? false : undefined)}
+              />
+            </div>
+          </div>
+          
+          {% elif field.type == 'date' %}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">{{ field.label }}</label>
+            <DateRangePicker
+              startDate={localFilters.{{ field.name }}?.start}
+              endDate={localFilters.{{ field.name }}?.end}
+              onChange={(start, end) => updateFilter('{{ field.name }}', 
+                start || end ? { start, end } : undefined
+              )}
+              placeholder="Seleccionar rango"
+              size="sm"
+            />
+          </div>
+          
+          {% elif field.type == 'relation' %}
+          <RelationFilter
+            label="{{ field.label }}"
+            endpoint="{{ field.relation.endpoint }}"
+            displayField="{{ field.relation.displayField }}"
+            valueField="{{ field.relation.valueField }}"
+            searchFields={[{% for searchField in field.relation.searchFields %}"{{ searchField }}"{% if not loop.last %}, {% endif %}{% endfor %}]}
+            value={localFilters.{{ field.name }} || []}
+            onChange={(value) => updateFilter('{{ field.name }}', value.length > 0 ? value : undefined)}
+            placeholder="Filtrar por {{ field.label|lower }}"
+            multiple
+            size="sm"
+          />
+          {% endif %}
+        </div>
+        
+        {% endif %}
+        {% endfor %}
+      </div>
+
+      {/* Estadísticas de filtros */}
+      {activeFiltersCount > 0 && (
+        <div className="text-sm text-gray-600 border-t pt-4">
+          <p>
+            {activeFiltersCount} filtro{activeFiltersCount !== 1 ? 's' : ''} aplicado{activeFiltersCount !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default {{ ENTITY_NAME }}Filter;

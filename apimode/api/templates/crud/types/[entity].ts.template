@@ -1,0 +1,389 @@
+/**
+ * Tipos TypeScript para {{ ENTITY_NAME }}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{ TIMESTAMP }}
+ */
+
+// Tipo base para {{ ENTITY_NAME }}
+export interface {{ ENTITY_NAME }} {
+  id: string;
+  {% for field in FIELDS %}
+  {% if field.type == 'relation' %}
+  {% if field.relation.multiple %}
+  {{ field.name }}: {{ field.relation.relationEntity }}[];
+  {% else %}
+  {{ field.name }}: {{ field.relation.relationEntity }} | null;
+  {% endif %}
+  {% elif field.type == 'number' %}
+  {{ field.name }}: number{% if not field.required %} | null{% endif %};
+  {% elif field.type == 'boolean' %}
+  {{ field.name }}: boolean{% if not field.required %} | null{% endif %};
+  {% elif field.type == 'date' %}
+  {{ field.name }}: Date{% if not field.required %} | null{% endif %};
+  {% elif field.type == 'file' %}
+  {{ field.name }}: string{% if not field.required %} | null{% endif %}; // URL del archivo
+  {% else %}
+  {{ field.name }}: string{% if not field.required %} | null{% endif %};
+  {% endif %}
+  {% endfor %}
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Tipo para crear {{ ENTITY_NAME }} (sin ID, timestamps)
+export interface Create{{ ENTITY_NAME }}Input {
+  {% for field in FIELDS %}
+  {% if field.type == 'relation' %}
+  {% if field.relation.multiple %}
+  {{ field.name }}{% if not field.required %}?{% endif %}: {{ field.relation.relationEntity }}SelectOption[];
+  {% else %}
+  {{ field.name }}{% if not field.required %}?{% endif %}: {{ field.relation.relationEntity }}SelectOption{% if not field.required %} | null{% endif %};
+  {% endif %}
+  {% elif field.type == 'number' %}
+  {{ field.name }}{% if not field.required %}?{% endif %}: number{% if not field.required %} | null{% endif %};
+  {% elif field.type == 'boolean' %}
+  {{ field.name }}{% if not field.required %}?{% endif %}: boolean{% if not field.required %} | null{% endif %};
+  {% elif field.type == 'date' %}
+  {{ field.name }}{% if not field.required %}?{% endif %}: Date{% if not field.required %} | null{% endif %};
+  {% elif field.type == 'file' %}
+  {{ field.name }}{% if not field.required %}?{% endif %}: string{% if not field.required %} | null{% endif %};
+  {% else %}
+  {{ field.name }}{% if not field.required %}?{% endif %}: string{% if not field.required %} | null{% endif %};
+  {% endif %}
+  {% endfor %}
+}
+
+// Tipo para actualizar {{ ENTITY_NAME }} (todos los campos opcionales excepto ID)
+export interface Update{{ ENTITY_NAME }}Input {
+  {% for field in FIELDS %}
+  {% if field.type == 'relation' %}
+  {% if field.relation.multiple %}
+  {{ field.name }}?: {{ field.relation.relationEntity }}SelectOption[];
+  {% else %}
+  {{ field.name }}?: {{ field.relation.relationEntity }}SelectOption | null;
+  {% endif %}
+  {% elif field.type == 'number' %}
+  {{ field.name }}?: number | null;
+  {% elif field.type == 'boolean' %}
+  {{ field.name }}?: boolean | null;
+  {% elif field.type == 'date' %}
+  {{ field.name }}?: Date | null;
+  {% elif field.type == 'file' %}
+  {{ field.name }}?: string | null;
+  {% else %}
+  {{ field.name }}?: string | null;
+  {% endif %}
+  {% endfor %}
+}
+
+{% for field in FIELDS %}
+{% if field.type == 'relation' %}
+// Tipo para la entidad relacionada {{ field.relation.relationEntity }}
+export interface {{ field.relation.relationEntity }} {
+  {{ field.relation.valueField }}: string;
+  {{ field.relation.displayField }}: string;
+  {% for searchField in field.relation.searchFields %}
+  {% if searchField != field.relation.valueField and searchField != field.relation.displayField %}
+  {{ searchField }}?: string;
+  {% endif %}
+  {% endfor %}
+}
+
+// Tipo para opciones de selección de {{ field.relation.relationEntity }}
+export interface {{ field.relation.relationEntity }}SelectOption {
+  {{ field.relation.valueField }}: string;
+  {{ field.relation.displayField }}: string;
+}
+
+{% endif %}
+{% endfor %}
+
+// Tipos para filtros
+export interface {{ ENTITY_NAME }}Filters {
+  {% for field in FIELDS %}
+  {% if field.filterable %}
+  {% if field.type == 'number' %}
+  {{ field.name }}_min?: number;
+  {{ field.name }}_max?: number;
+  {% elif field.type == 'date' %}
+  {{ field.name }}_start?: Date;
+  {{ field.name }}_end?: Date;
+  {% elif field.type == 'boolean' %}
+  {{ field.name }}?: boolean;
+  {% elif field.type == 'relation' %}
+  {{ field.name }}?: string[];
+  {% elif field.type == 'select' %}
+  {{ field.name }}?: string[];
+  {% else %}
+  {{ field.name }}?: string;
+  {% endif %}
+  {% endif %}
+  {% endfor %}
+}
+
+// Tipos para ordenamiento
+export type {{ ENTITY_NAME }}SortField = 
+  {% for field in FIELDS %}
+  {% if field.sortable %}
+  | '{{ field.name }}'
+  {% endif %}
+  {% endfor %}
+  | 'createdAt'
+  | 'updatedAt';
+
+export type SortOrder = 'asc' | 'desc';
+
+// Tipos para búsqueda
+export interface {{ ENTITY_NAME }}SearchParams {
+  search?: string;
+  sort?: {{ ENTITY_NAME }}SortField;
+  order?: SortOrder;
+  page?: number;
+  limit?: number;
+  filters?: {{ ENTITY_NAME }}Filters;
+}
+
+// Tipo para respuesta de la API de lista
+export interface {{ ENTITY_NAME }}ListResponse {
+  data: {{ ENTITY_NAME }}[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+  filters: {{ ENTITY_NAME }}Filters;
+}
+
+// Tipos para respuestas de API
+export interface {{ ENTITY_NAME }}ApiResponse {
+  data?: {{ ENTITY_NAME }};
+  error?: string;
+  message?: string;
+}
+
+export interface {{ ENTITY_NAME }}ListApiResponse {
+  data?: {{ ENTITY_NAME }}[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+  filters?: {{ ENTITY_NAME }}Filters;
+  error?: string;
+  message?: string;
+}
+
+// Tipos para errores específicos
+export interface {{ ENTITY_NAME }}ValidationError {
+  field: string;
+  message: string;
+  code: string;
+}
+
+export interface {{ ENTITY_NAME }}Error {
+  error: string;
+  details?: {{ ENTITY_NAME }}ValidationError[];
+  code?: string;
+}
+
+// Tipos para formularios
+export interface {{ ENTITY_NAME }}FormData {
+  {% for field in FIELDS %}
+  {% if field.type == 'relation' %}
+  {% if field.relation.multiple %}
+  {{ field.name }}: {{ field.relation.relationEntity }}SelectOption[];
+  {% else %}
+  {{ field.name }}: {{ field.relation.relationEntity }}SelectOption | null;
+  {% endif %}
+  {% elif field.type == 'number' %}
+  {{ field.name }}: number | string; // String para inputs, number para lógica
+  {% elif field.type == 'boolean' %}
+  {{ field.name }}: boolean;
+  {% elif field.type == 'date' %}
+  {{ field.name }}: Date | string | null; // String para inputs de fecha
+  {% elif field.type == 'file' %}
+  {{ field.name }}: File | string | null; // File para upload, string para URL
+  {% else %}
+  {{ field.name }}: string;
+  {% endif %}
+  {% endfor %}
+}
+
+// Tipos para campos dinámicos
+export interface {{ ENTITY_NAME }}FieldConfig {
+  name: keyof {{ ENTITY_NAME }};
+  type: '{% for field in FIELDS %}{{ field.type }}{% if not loop.last %}' | '{% endif %}{% endfor %}';
+  label: string;
+  required: boolean;
+  searchable: boolean;
+  sortable: boolean;
+  filterable: boolean;
+  showInList: boolean;
+  placeholder?: string;
+  validation?: {
+    min?: number;
+    max?: number;
+    pattern?: string;
+    options?: string[];
+    accept?: string;
+  };
+  {% for field in FIELDS %}
+  {% if field.type == 'relation' %}
+  relation?: {
+    endpoint: string;
+    displayField: string;
+    valueField: string;
+    searchFields: string[];
+    multiple: boolean;
+    preload: boolean;
+    minChars: number;
+    relationEntity: string;
+    allowCreate: boolean;
+  };
+  {% endif %}
+  {% endfor %}
+}
+
+// Configuración completa de la entidad
+export interface {{ ENTITY_NAME }}EntityConfig {
+  name: '{{ ENTITY_NAME }}';
+  namePlural: '{{ ENTITY_NAME_PLURAL }}';
+  apiEndpoint: '{{ API_ENDPOINT }}';
+  fields: {{ ENTITY_NAME }}FieldConfig[];
+  permissions: {
+    create: boolean;
+    read: boolean;
+    update: boolean;
+    delete: boolean;
+  };
+}
+
+// Tipos para hooks
+export interface Use{{ ENTITY_NAME }}ListOptions {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: {{ ENTITY_NAME }}SortField;
+  order?: SortOrder;
+  filters?: {{ ENTITY_NAME }}Filters;
+  enabled?: boolean;
+}
+
+export interface Use{{ ENTITY_NAME }}ListResult {
+  data: {{ ENTITY_NAME }}[] | undefined;
+  total: number;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => void;
+  isFetching: boolean;
+}
+
+export interface Use{{ ENTITY_NAME }}Result {
+  data: {{ ENTITY_NAME }} | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+
+export interface Use{{ ENTITY_NAME }}MutationResult {
+  create{{ ENTITY_NAME }}: (data: Create{{ ENTITY_NAME }}Input) => Promise<{{ ENTITY_NAME }}>;
+  update{{ ENTITY_NAME }}: (id: string, data: Update{{ ENTITY_NAME }}Input) => Promise<{{ ENTITY_NAME }}>;
+  delete{{ ENTITY_NAME }}: (id: string) => Promise<void>;
+  bulkDelete: (ids: string[]) => Promise<void>;
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
+  error: Error | null;
+}
+
+// Tipos utilitarios
+export type {{ ENTITY_NAME }}Keys = keyof {{ ENTITY_NAME }};
+export type {{ ENTITY_NAME }}RequiredFields = {
+  {% for field in FIELDS %}
+  {% if field.required %}
+  {{ field.name }}: {{ ENTITY_NAME }}['{{ field.name }}'];
+  {% endif %}
+  {% endfor %}
+};
+export type {{ ENTITY_NAME }}OptionalFields = Omit<{{ ENTITY_NAME }}, keyof {{ ENTITY_NAME }}RequiredFields | 'id' | 'createdAt' | 'updatedAt'>;
+
+// Constantes de tipos
+export const {{ ENTITY_NAME_UPPER }}_SORT_FIELDS: {{ ENTITY_NAME }}SortField[] = [
+  {% for field in FIELDS %}
+  {% if field.sortable %}
+  '{{ field.name }}',
+  {% endif %}
+  {% endfor %}
+  'createdAt',
+  'updatedAt'
+];
+
+export const {{ ENTITY_NAME_UPPER }}_SEARCHABLE_FIELDS: (keyof {{ ENTITY_NAME }})[] = [
+  {% for field in FIELDS %}
+  {% if field.searchable %}
+  '{{ field.name }}',
+  {% endif %}
+  {% endfor %}
+];
+
+export const {{ ENTITY_NAME_UPPER }}_FILTERABLE_FIELDS: (keyof {{ ENTITY_NAME }})[] = [
+  {% for field in FIELDS %}
+  {% if field.filterable %}
+  '{{ field.name }}',
+  {% endif %}
+  {% endfor %}
+];
+
+export const {{ ENTITY_NAME_UPPER }}_LIST_FIELDS: (keyof {{ ENTITY_NAME }})[] = [
+  {% for field in FIELDS %}
+  {% if field.showInList %}
+  '{{ field.name }}',
+  {% endif %}
+  {% endfor %}
+];
+
+// Helpers de tipo
+export function is{{ ENTITY_NAME }}(obj: any): obj is {{ ENTITY_NAME }} {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    typeof obj.id === 'string' &&
+    {% for field in FIELDS %}
+    {% if field.required %}
+    {% if field.type == 'string' %}
+    typeof obj.{{ field.name }} === 'string' &&
+    {% elif field.type == 'number' %}
+    typeof obj.{{ field.name }} === 'number' &&
+    {% elif field.type == 'boolean' %}
+    typeof obj.{{ field.name }} === 'boolean' &&
+    {% elif field.type == 'date' %}
+    obj.{{ field.name }} instanceof Date &&
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+    obj.createdAt instanceof Date &&
+    obj.updatedAt instanceof Date
+  );
+}
+
+export function create{{ ENTITY_NAME }}FromFormData(formData: {{ ENTITY_NAME }}FormData): Create{{ ENTITY_NAME }}Input {
+  return {
+    {% for field in FIELDS %}
+    {% if field.type == 'number' %}
+    {{ field.name }}: typeof formData.{{ field.name }} === 'string' ? parseFloat(formData.{{ field.name }}) : formData.{{ field.name }},
+    {% elif field.type == 'date' %}
+    {{ field.name }}: typeof formData.{{ field.name }} === 'string' ? new Date(formData.{{ field.name }}) : formData.{{ field.name }},
+    {% else %}
+    {{ field.name }}: formData.{{ field.name }},
+    {% endif %}
+    {% endfor %}
+  };
+}

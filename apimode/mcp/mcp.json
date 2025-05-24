@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcp-creator-bridge": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "API_BASE_URL": "http://localhost:8000"
+      }
+    }
+  }
+}
