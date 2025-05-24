@@ -34,11 +34,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       isError: result.isError,
     };
   } catch (error: any) {
+    // Note: No usar console.log en MCP - interfiere con la comunicación JSON
+    const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
     return {
       content: [
         {
           type: "text" as const,
-          text: `Error: ${error.message}`,
+          text: `Error ejecutando herramienta ${name}: ${errorMessage}`,
         },
       ],
       isError: true,

@@ -7,11 +7,11 @@
 import { z } from 'zod';
 
 {% for field in FIELDS %}
-{% if field.type == 'relation' %}
+{% if field.type == 'relation' and field.relation and field.relation.relationEntity %}
 // Schema para {{ field.relation.relationEntity }}
-const {{ field.relation.relationEntity|lower }}SelectSchema = z.object({
-  {{ field.relation.valueField }}: z.string().min(1, '{{ field.relation.relationEntity }} ID es requerido'),
-  {{ field.relation.displayField }}: z.string().min(1, '{{ field.relation.relationEntity }} nombre es requerido'),
+const {{ field.relation.relationEntity.lower() }}SelectSchema = z.object({
+  {{ field.relation.valueField or 'id' }}: z.string().min(1, '{{ field.relation.relationEntity }} ID es requerido'),
+  {{ field.relation.displayField or 'name' }}: z.string().min(1, '{{ field.relation.relationEntity }} nombre es requerido'),
 });
 
 {% endif %}
@@ -25,9 +25,9 @@ export const {{ ENTITY_NAME_LOWER }}Schema = z.object({
   {% if field.type == 'text' %}
   {{ field.name }}: z.string()
     {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
-    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
-    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %}
-    {% if field.validation.pattern %}.regex(/{{ field.validation.pattern }}/, '{{ field.label }} tiene un formato inválido'){% endif %},
+    {% if field.validation and field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
+    {% if field.validation and field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %}
+    {% if field.validation and field.validation.pattern %}.regex(/{{ field.validation.pattern }}/, '{{ field.label }} tiene un formato inválido'){% endif %},
   
   {% elif field.type == 'email' %}
   {{ field.name }}: z.string()
@@ -37,30 +37,34 @@ export const {{ ENTITY_NAME_LOWER }}Schema = z.object({
   {% elif field.type == 'password' %}
   {{ field.name }}: z.string()
     {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
-    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
-    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %}
-    {% if field.validation.pattern %}.regex(/{{ field.validation.pattern }}/, '{{ field.label }} debe cumplir con el formato requerido'){% endif %},
+    {% if field.validation and field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
+    {% if field.validation and field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %}
+    {% if field.validation and field.validation.pattern %}.regex(/{{ field.validation.pattern }}/, '{{ field.label }} debe cumplir con el formato requerido'){% endif %},
   
   {% elif field.type == 'number' %}
   {{ field.name }}: z.number({
       required_error: '{{ field.label }} es requerido',
       invalid_type_error: '{{ field.label }} debe ser un número'
     })
-    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe ser mayor o igual a {{ field.validation.min }}'){% endif %}
-    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe ser menor o igual a {{ field.validation.max }}'){% endif %}
+    {% if field.validation and field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe ser mayor o igual a {{ field.validation.min }}'){% endif %}
+    {% if field.validation and field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe ser menor o igual a {{ field.validation.max }}'){% endif %}
     {% if not field.required %}.optional(){% endif %},
   
   {% elif field.type == 'textarea' %}
   {{ field.name }}: z.string()
     {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
-    {% if field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
-    {% if field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %},
+    {% if field.validation and field.validation.min %}.min({{ field.validation.min }}, '{{ field.label }} debe tener al menos {{ field.validation.min }} caracteres'){% endif %}
+    {% if field.validation and field.validation.max %}.max({{ field.validation.max }}, '{{ field.label }} debe tener máximo {{ field.validation.max }} caracteres'){% endif %},
   
   {% elif field.type == 'select' %}
   {{ field.name }}: z.enum([
+      {% if field.validation and field.validation.options %}
       {% for option in field.validation.options %}
       '{{ option }}'{% if not loop.last %},{% endif %}
       {% endfor %}
+      {% else %}
+      'option1', 'option2'
+      {% endif %}
     ], {
       required_error: '{{ field.label }} es requerido',
       invalid_type_error: '{{ field.label }} debe ser una opción válida'
@@ -83,12 +87,12 @@ export const {{ ENTITY_NAME_LOWER }}Schema = z.object({
     {% if field.required %}.min(1, '{{ field.label }} es requerido'){% else %}.optional(){% endif %}
     .url('{{ field.label }} debe ser una URL válida'),
   
-  {% elif field.type == 'relation' %}
+  {% elif field.type == 'relation' and field.relation and field.relation.relationEntity %}
   {% if field.relation.multiple %}
-  {{ field.name }}: z.array({{ field.relation.relationEntity|lower }}SelectSchema)
+  {{ field.name }}: z.array({{ field.relation.relationEntity.lower() }}SelectSchema)
     {% if field.required %}.min(1, 'Debe seleccionar al menos un {{ field.label }}'){% else %}.optional(){% endif %},
   {% else %}
-  {{ field.name }}: {{ field.relation.relationEntity|lower }}SelectSchema
+  {{ field.name }}: {{ field.relation.relationEntity.lower() }}SelectSchema
     {% if not field.required %}.optional().nullable(){% endif %},
   {% endif %}
   {% endif %}
@@ -202,11 +206,11 @@ export const {{ ENTITY_NAME_LOWER }}BulkOperationSchema = z.object({
 });
 
 {% for field in FIELDS %}
-{% if field.type == 'relation' %}
+{% if field.type == 'relation' and field.relation and field.relation.relationEntity %}
 // Schema para búsqueda de {{ field.relation.relationEntity }}
-export const {{ field.relation.relationEntity|lower }}SearchSchema = z.object({
-  q: z.string().min({{ field.relation.minChars }}, 'Mínimo {{ field.relation.minChars }} caracteres para buscar'),
-  fields: z.string().default('{% for searchField in field.relation.searchFields %}{{ searchField }}{% if not loop.last %},{% endif %}{% endfor %}'),
+export const {{ field.relation.relationEntity.lower() }}SearchSchema = z.object({
+  q: z.string().min({{ field.relation.minChars or 2 }}, 'Mínimo {{ field.relation.minChars or 2 }} caracteres para buscar'),
+  fields: z.string().default('{% if field.relation.searchFields %}{% for searchField in field.relation.searchFields %}{{ searchField }}{% if not loop.last %},{% endif %}{% endfor %}{% else %}name{% endif %}'),
   limit: z.coerce.number().min(1).max(50).default(10),
 });
 

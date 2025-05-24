@@ -7,6 +7,7 @@ from pathlib import Path
 from crud_generator import CRUDGenerator
 from model_types import CRUDGeneratorConfig, GeneratorOptions
 from validators import CRUDValidator
+from sql_utils import SqlValidator, SqlConnection
 
 app = FastAPI(title="MCP Creator API", version="1.0.0")
 
@@ -491,6 +492,129 @@ def generate_complex_example(entity_name: str) -> Dict[str, Any]:
             "delete": True
         }
     }
+
+# ================================
+# ENDPOINTS SQL
+# ================================
+
+class ExecuteSqlRequest(BaseModel):
+    connection_string: str
+    query: str
+    max_rows: int = 1000
+
+class ExecuteSqlResponse(BaseModel):
+    success: bool
+    query_type: str
+    execution_time_ms: Optional[int] = None
+    rows_affected: Optional[int] = None
+    data: List[List[Any]] = []
+    columns: List[str] = []
+    errors: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+
+class DatabaseInfoRequest(BaseModel):
+    connection_string: str
+    action: str  # 'info', 'tables', 'table_structure'
+    table_name: Optional[str] = None
+
+class DatabaseInfoResponse(BaseModel):
+    success: bool
+    data: Dict[str, Any]
+    message: Optional[str] = None
+
+@app.post("/execute-sql", response_model=ExecuteSqlResponse)
+async def execute_sql(request: ExecuteSqlRequest):
+    try:
+        # Validar la query
+        validation = SqlValidator.validate(request.query)
+        
+        if not validation['is_valid']:
+            return ExecuteSqlResponse(
+                success=False,
+                query_type=validation['query_type'],
+                errors=validation['errors'],
+                warnings=validation['warnings']
+            )
+        
+        # Sanitizar query
+        clean_query = SqlValidator.sanitize_query(request.query)
+        
+        # Ejecutar query
+        import time
+        start_time = time.time()
+        
+        result = SqlConnection.execute_query(
+            request.connection_string,
+            clean_query,
+            request.max_rows
+        )
+        
+        execution_time = int((time.time() - start_time) * 1000)
+        
+        if result['success']:
+            return ExecuteSqlResponse(
+                success=True,
+                query_type=validation['query_type'],
+                execution_time_ms=execution_time,
+                rows_affected=result['rows_affected'],
+                data=result['data'],
+                columns=result['columns'],
+                warnings=validation['warnings']
+            )
+        else:
+            return ExecuteSqlResponse(
+                success=False,
+                query_type=validation['query_type'],
+                execution_time_ms=execution_time,
+                errors=[result['error']],
+                warnings=validation['warnings']
+            )
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/database-info", response_model=DatabaseInfoResponse)
+async def get_database_info(request: DatabaseInfoRequest):
+    try:
+        if request.action == 'info':
+            info = SqlConnection.get_database_info(request.connection_string)
+            return DatabaseInfoResponse(
+                success=True,
+                data=info,
+                message="Información de base de datos obtenida exitosamente"
+            )
+        
+        elif request.action == 'tables':
+            tables = SqlConnection.get_tables(request.connection_string)
+            return DatabaseInfoResponse(
+                success=True,
+                data={'tables': tables, 'count': len(tables)},
+                message=f"Se encontraron {len(tables)} tablas"
+            )
+        
+        elif request.action == 'table_structure':
+            if not request.table_name:
+                raise HTTPException(status_code=400, detail="table_name es requerido para action='table_structure'")
+            
+            structure = SqlConnection.get_table_structure(
+                request.connection_string, 
+                request.table_name
+            )
+            return DatabaseInfoResponse(
+                success=True,
+                data={
+                    'table_name': request.table_name,
+                    'columns': structure,
+                    'column_count': len(structure)
+                },
+                message=f"Estructura de tabla {request.table_name} obtenida exitosamente"
+            )
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Acción no válida: {request.action}")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

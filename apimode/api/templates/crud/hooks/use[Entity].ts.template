@@ -204,8 +204,8 @@ export function use{{ ENTITY_NAME }}Mutations(): Use{{ ENTITY_NAME }}MutationRes
     
     // También invalidar queries relacionadas si existen
     {% for field in FIELDS %}
-    {% if field.type == 'relation' %}
-    queryClient.invalidateQueries({ queryKey: ['{{ field.relation.relationEntity|lower }}'] });
+    {% if field.type == 'relation' and field.relation and field.relation.relationEntity %}
+    queryClient.invalidateQueries({ queryKey: ['{{ field.relation.relationEntity.lower() }}'] });
     {% endif %}
     {% endfor %}
   }, [queryClient]);
@@ -416,25 +416,25 @@ export function use{{ ENTITY_NAME }}Form(id?: string) {
 }
 
 {% for field in FIELDS %}
-{% if field.type == 'relation' %}
+{% if field.type == 'relation' and field.relation and field.relation.relationEntity %}
 /**
  * Hook para búsqueda de {{ field.relation.relationEntity }} (para campos de relación)
  */
 export function use{{ field.relation.relationEntity }}Search() {
   const search{{ field.relation.relationEntity }} = useCallback(
     async (query: string): Promise<{{ field.relation.relationEntity }}[]> => {
-      if (query.length < {{ field.relation.minChars }}) {
+      if (query.length < {{ field.relation.minChars or 2 }}) {
         return [];
       }
 
       try {
         const searchParams = new URLSearchParams({
           q: query,
-          fields: '{% for searchField in field.relation.searchFields %}{{ searchField }}{% if not loop.last %},{% endif %}{% endfor %}',
+          fields: '{% if field.relation.searchFields %}{% for searchField in field.relation.searchFields %}{{ searchField }}{% if not loop.last %},{% endif %}{% endfor %}{% else %}name{% endif %}',
           limit: '10'
         });
 
-        const response = await fetch(`{{ field.relation.endpoint }}/search?${searchParams}`);
+        const response = await fetch(`{{ field.relation.endpoint or '/api/' + field.relation.relationEntity.lower() }}/search?${searchParams}`);
         
         if (!response.ok) {
           throw new Error('Error en la búsqueda');
@@ -459,9 +459,9 @@ export function use{{ field.relation.relationEntity }}Search() {
  */
 export function use{{ field.relation.relationEntity }}Options() {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['{{ field.relation.relationEntity|lower }}', 'options'],
+    queryKey: ['{{ field.relation.relationEntity.lower() }}', 'options'],
     queryFn: async (): Promise<{{ field.relation.relationEntity }}[]> => {
-      const response = await fetch('{{ field.relation.endpoint }}/options');
+      const response = await fetch('{{ field.relation.endpoint or '/api/' + field.relation.relationEntity.lower() }}/options');
       
       if (!response.ok) {
         throw new Error('Error loading {{ field.relation.relationEntity }} options');
@@ -493,7 +493,7 @@ export const use{{ ENTITY_NAME }} = {
   useManager: use{{ ENTITY_NAME }}Manager,
   useForm: use{{ ENTITY_NAME }}Form,
   {% for field in FIELDS %}
-  {% if field.type == 'relation' %}
+  {% if field.type == 'relation' and field.relation and field.relation.relationEntity %}
   use{{ field.relation.relationEntity }}Search,
   {% if field.relation.preload %}
   use{{ field.relation.relationEntity }}Options,

@@ -1,10 +1,13 @@
 {
   "mcpServers": {
-    "mcp-creator-bridge": {
-      "command": "node",
-      "args": ["/mnt/f/mcpcreador/mcpcreadorv2/apimode/mcp/dist/index.js"],
+    "mcp-create-apps": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "/mnt/f/mcpcreador/mcpcreadorv2/apimode/mcp/src/index.ts"
+      ],
       "env": {
-        "API_BASE_URL": "http://localhost:8000"
+        "API_BASE_URL": "http://172.28.112.1:8000"
       }
     }
   }

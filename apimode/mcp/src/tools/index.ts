@@ -27,9 +27,34 @@ export function getToolSchemas() {
 export async function executeTool(name: string, args: any): Promise<ToolResponse> {
   const tool = tools[name];
   if (!tool) {
-    throw new Error(`Unknown tool: ${name}`);
+    return {
+      content: [{
+        type: "text" as const,
+        text: `DEBUG: Tool no encontrado: ${name}. Tools disponibles: ${Object.keys(tools).join(', ')}`
+      }],
+      isError: true
+    };
   }
-  return tool.execute(args);
+  
+  // Agregar debug info al principio
+  try {
+    const result = await tool.execute(args);
+    
+    // Agregar info de debug al resultado exitoso
+    if (result.content && result.content[0] && result.content[0].type === "text") {
+      result.content[0].text = `DEBUG: executeTool llamado exitosamente con tool: ${name}\n\n${result.content[0].text}`;
+    }
+    
+    return result;
+  } catch (error: any) {
+    return {
+      content: [{
+        type: "text" as const,
+        text: `DEBUG: Error en executeTool con tool: ${name}\nError: ${error.message}\nStack: ${error.stack}`
+      }],
+      isError: true
+    };
+  }
 }
 
 export {

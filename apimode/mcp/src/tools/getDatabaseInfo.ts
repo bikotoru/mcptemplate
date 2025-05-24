@@ -1,4 +1,4 @@
-import { SqlConnection } from '../utils/sqlConnection.js';
+import { apiClient } from '../utils/apiClient.js';
 import { ResponseFormatter } from '../utils/responseFormatter.js';
 import { ToolResponse } from '../types/index.js';
 
@@ -38,71 +38,74 @@ export class GetDatabaseInfoTool {
   static async execute(args: any): Promise<ToolResponse> {
     try {
       if (!args || !args.connectionString || !args.action) {
-        return ResponseFormatter.formatError("connectionString y action son requeridos");
+        return ResponseFormatter.formatError("DEBUG: getDatabaseInfo.execute - connectionString y action son requeridos");
       }
 
       const { connectionString, action, tableName } = args as DatabaseInfoArgs;
 
-      // Conectar a la base de datos
-      await SqlConnection.connect(connectionString);
-
-      let responseText = '';
+      // DEBUG: Mostrar qué parámetros recibió
+      const debugInfo = `DEBUG: getDatabaseInfo.execute iniciado\nParametros: connectionString=${connectionString ? 'PRESENTE' : 'AUSENTE'}, action=${action}, tableName=${tableName}\n\n`;
 
       try {
-        switch (action) {
-          case 'info':
-            responseText = await this.getDatabaseInfo();
-            break;
-          case 'tables':
-            responseText = await this.getTablesInfo();
-            break;
-          case 'table_structure':
-            if (!tableName) {
-              return ResponseFormatter.formatError("tableName es requerido para action='table_structure'");
-            }
-            responseText = await this.getTableStructureInfo(tableName);
-            break;
-          default:
-            return ResponseFormatter.formatError(`Acción no válida: ${action}`);
-        }
+        // Llamar a la API de Python
+        const response = await apiClient.post('/database-info', {
+          connection_string: connectionString,
+          action: action,
+          table_name: tableName
+        });
 
-      } finally {
-        // Cerrar la conexión
-        await SqlConnection.disconnect();
+      const result = response.data;
+
+      if (!result.success) {
+        return ResponseFormatter.formatError(`Error: ${result.message || 'Error desconocido'}`);
+      }
+
+      // Formatear respuesta según la acción
+      let responseText = '';
+
+      switch (action) {
+        case 'info':
+          responseText = this.formatDatabaseInfo(result.data);
+          break;
+        case 'tables':
+          responseText = this.formatTablesInfo(result.data);
+          break;
+        case 'table_structure':
+          responseText = this.formatTableStructureInfo(result.data);
+          break;
+        default:
+          return ResponseFormatter.formatError(`Acción no válida: ${action}`);
       }
 
       return {
         content: [
           {
             type: "text" as const,
-            text: responseText,
+            text: debugInfo + responseText,
           },
         ],
       };
 
-    } catch (error: any) {
-      // Asegurar que la conexión se cierre en caso de error
-      try {
-        await SqlConnection.disconnect();
-      } catch (disconnectError) {
-        // Ignorar errores al desconectar
+      } catch (apiError: any) {
+        const errorMessage = apiError?.response?.data?.detail || apiError?.message || 'Error desconocido llamando API';
+        return ResponseFormatter.formatError(`DEBUG: Error en API call\n${debugInfo}Error: ${errorMessage}`);
       }
 
-      return ResponseFormatter.formatError(`Error obteniendo información de la base de datos: ${error.message}`);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Error desconocido obteniendo información';
+      return ResponseFormatter.formatError(`DEBUG: Error general en getDatabaseInfo.execute\nError: ${errorMessage}`);
     }
   }
 
-  private static async getDatabaseInfo(): Promise<string> {
-    const info = await SqlConnection.getDatabaseInfo();
-    
+  private static formatDatabaseInfo(info: any): string {
     let responseText = `# 📊 Información de la Base de Datos\n\n`;
     responseText += `## Detalles de Conexión\n\n`;
-    responseText += `- **Base de Datos:** ${info.DatabaseName}\n`;
-    responseText += `- **Servidor:** ${info.ServerName}\n`;
-    responseText += `- **Usuario Actual:** ${info.CurrentUser}\n`;
-    responseText += `- **Fecha/Hora Actual:** ${new Date(info.CurrentTime).toLocaleString()}\n\n`;
+    responseText += `- **Base de Datos:** ${info.database_name}\n`;
+    responseText += `- **Servidor:** ${info.server_name}\n`;
+    responseText += `- **Usuario Actual:** ${info.current_user}\n`;
+    responseText += `- **Fecha/Hora Actual:** ${info.current_time ? new Date(info.current_time).toLocaleString() : 'N/A'}\n\n`;
     responseText += `## Versión del Servidor\n\n`;
-    responseText += `\`\`\`\n${info.ServerVersion}\n\`\`\`\n\n`;
+    responseText += `\`\`\`\n${info.server_version}\n\`\`\`\n\n`;
     responseText += `## Acciones Disponibles\n\n`;
     responseText += `- Usa \`action: "tables"\` para listar todas las tablas\n`;
     responseText += `- Usa \`action: "table_structure"\` con \`tableName\` para ver la estructura de una tabla específica\n`;
@@ -111,8 +114,8 @@ export class GetDatabaseInfoTool {
     return responseText;
   }
 
-  private static async getTablesInfo(): Promise<string> {
-    const tables = await SqlConnection.getTables();
+  private static formatTablesInfo(data: any): string {
+    const tables = data.tables || [];
     
     let responseText = `# 📋 Tablas en la Base de Datos\n\n`;
     
@@ -121,10 +124,10 @@ export class GetDatabaseInfoTool {
       return responseText;
     }
 
-    responseText += `**Total de Tablas:** ${tables.length}\n\n`;
+    responseText += `**Total de Tablas:** ${data.count || tables.length}\n\n`;
     responseText += `## Lista de Tablas\n\n`;
     
-    tables.forEach((table, index) => {
+    tables.forEach((table: string, index: number) => {
       responseText += `${index + 1}. **${table}**\n`;
     });
 
@@ -141,8 +144,9 @@ export class GetDatabaseInfoTool {
     return responseText;
   }
 
-  private static async getTableStructureInfo(tableName: string): Promise<string> {
-    const structure = await SqlConnection.getTableStructure(tableName);
+  private static formatTableStructureInfo(data: any): string {
+    const tableName = data.table_name;
+    const structure = data.columns || [];
     
     let responseText = `# 🏗️ Estructura de la Tabla: ${tableName}\n\n`;
     
@@ -151,19 +155,19 @@ export class GetDatabaseInfoTool {
       return responseText;
     }
 
-    responseText += `**Total de Columnas:** ${structure.length}\n\n`;
+    responseText += `**Total de Columnas:** ${data.column_count || structure.length}\n\n`;
     responseText += `## Definición de Columnas\n\n`;
     responseText += `| Columna | Tipo | Nulo | Por Defecto | Tamaño | Precisión | Escala |\n`;
     responseText += `|---------|------|------|-------------|---------|-----------|--------|\n`;
 
-    structure.forEach(col => {
-      const columnName = col.COLUMN_NAME;
-      const dataType = col.DATA_TYPE;
-      const isNullable = col.IS_NULLABLE === 'YES' ? '✅' : '❌';
-      const defaultValue = col.COLUMN_DEFAULT || '-';
-      const maxLength = col.CHARACTER_MAXIMUM_LENGTH || '-';
-      const precision = col.NUMERIC_PRECISION || '-';
-      const scale = col.NUMERIC_SCALE || '-';
+    structure.forEach((col: any) => {
+      const columnName = col.column_name;
+      const dataType = col.data_type;
+      const isNullable = col.is_nullable === 'YES' ? '✅' : '❌';
+      const defaultValue = col.column_default || '-';
+      const maxLength = col.max_length || '-';
+      const precision = col.precision || '-';
+      const scale = col.scale || '-';
 
       responseText += `| ${columnName} | ${dataType} | ${isNullable} | ${defaultValue} | ${maxLength} | ${precision} | ${scale} |\n`;
     });
@@ -175,18 +179,18 @@ export class GetDatabaseInfoTool {
     responseText += `\`\`\`\n\n`;
 
     responseText += `## Ejemplo de Query INSERT\n\n`;
-    const nonIdentityColumns = structure.filter(col => 
-      !col.COLUMN_DEFAULT?.includes('IDENTITY') && 
-      col.COLUMN_NAME !== 'id' && 
-      col.COLUMN_NAME !== 'Id'
+    const nonIdentityColumns = structure.filter((col: any) => 
+      !col.column_default?.includes('IDENTITY') && 
+      col.column_name !== 'id' && 
+      col.column_name !== 'Id'
     );
 
     if (nonIdentityColumns.length > 0) {
       responseText += `\`\`\`sql\n`;
       responseText += `INSERT INTO ${tableName} (\n`;
-      responseText += `    ${nonIdentityColumns.map(col => col.COLUMN_NAME).join(',\n    ')}\n`;
+      responseText += `    ${nonIdentityColumns.map((col: any) => col.column_name).join(',\n    ')}\n`;
       responseText += `) VALUES (\n`;
-      responseText += `    ${nonIdentityColumns.map(col => this.getExampleValue(col)).join(',\n    ')}\n`;
+      responseText += `    ${nonIdentityColumns.map((col: any) => this.getExampleValue(col)).join(',\n    ')}\n`;
       responseText += `);\n`;
       responseText += `\`\`\`\n`;
     }
@@ -195,8 +199,8 @@ export class GetDatabaseInfoTool {
   }
 
   private static getExampleValue(column: any): string {
-    const dataType = column.DATA_TYPE.toLowerCase();
-    const isNullable = column.IS_NULLABLE === 'YES';
+    const dataType = column.data_type.toLowerCase();
+    const isNullable = column.is_nullable === 'YES';
 
     if (isNullable) {
       return 'NULL  -- O un valor apropiado';

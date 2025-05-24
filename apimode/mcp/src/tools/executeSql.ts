@@ -1,6 +1,4 @@
-import sql from 'mssql';
-import { SqlValidator } from '../utils/sqlValidator.js';
-import { SqlConnection } from '../utils/sqlConnection.js';
+import { apiClient } from '../utils/apiClient.js';
 import { ResponseFormatter } from '../utils/responseFormatter.js';
 import { ToolResponse } from '../types/index.js';
 
@@ -40,68 +38,56 @@ export class ExecuteSqlTool {
   static async execute(args: any): Promise<ToolResponse> {
     try {
       if (!args || !args.connectionString || !args.query) {
-        return ResponseFormatter.formatError("connectionString y query son requeridos");
+        return ResponseFormatter.formatError("DEBUG: ExecuteSqlTool.execute - connectionString y query son requeridos");
       }
 
       const { connectionString, query, maxRows = 1000 } = args as SqlExecuteArgs;
 
-      // Validar la query antes de ejecutar
-      const validation = SqlValidator.validate(query);
-      
-      if (!validation.isValid) {
-        return this.formatValidationError(validation);
-      }
-
-      // Sanitizar la query
-      const sanitizedQuery = SqlValidator.sanitizeQuery(query);
-
-      // Conectar a la base de datos
-      await SqlConnection.connect(connectionString);
-
-      let result: any;
-      let responseText = '';
+      // DEBUG: Mostrar qué parámetros recibió
+      const debugInfo = `DEBUG: ExecuteSqlTool.execute iniciado\nParametros: connectionString=${connectionString ? 'PRESENTE' : 'AUSENTE'}, query=${query ? query.substring(0, 50) + '...' : 'AUSENTE'}, maxRows=${maxRows}\n\n`;
 
       try {
-        const pool = SqlConnection.getPool();
-        const request = pool.request();
+        // Llamar a la API de Python
+        const response = await apiClient.post('/execute-sql', {
+          connection_string: connectionString,
+          query: query,
+          max_rows: maxRows
+        });
 
-        // Configurar timeout
-        // Ejecutar la query
-        const startTime = Date.now();
-        result = await request.query(sanitizedQuery);
-        const executionTime = Date.now() - startTime;
+      const result = response.data;
 
-        // Formatear respuesta basada en el tipo de query
-        responseText = this.formatSqlResult(result, validation.queryType, executionTime, maxRows);
-
-        // Mostrar advertencias si las hay
-        if (validation.warnings.length > 0) {
-          responseText = `## ⚠️ Advertencias\n\n${validation.warnings.map(w => `- ${w}`).join('\n')}\n\n${responseText}`;
+      if (!result.success) {
+        if (result.errors) {
+          return this.formatValidationError(result);
         }
+        return ResponseFormatter.formatError(`Error ejecutando SQL: ${result.errors?.[0] || 'Error desconocido'}`);
+      }
 
-      } finally {
-        // Cerrar la conexión
-        await SqlConnection.disconnect();
+      // Formatear respuesta exitosa
+      let responseText = this.formatSqlResult(result);
+
+      // Mostrar advertencias si las hay
+      if (result.warnings && result.warnings.length > 0) {
+        responseText = `## ⚠️ Advertencias\n\n${result.warnings.map((w: string) => `- ${w}`).join('\n')}\n\n${responseText}`;
       }
 
       return {
         content: [
           {
             type: "text" as const,
-            text: responseText,
+            text: debugInfo + responseText,
           },
         ],
       };
 
-    } catch (error: any) {
-      // Asegurar que la conexión se cierre en caso de error
-      try {
-        await SqlConnection.disconnect();
-      } catch (disconnectError) {
-        // Ignorar errores al desconectar
+      } catch (apiError: any) {
+        const errorMessage = apiError?.response?.data?.detail || apiError?.message || 'Error desconocido llamando API';
+        return ResponseFormatter.formatError(`DEBUG: Error en API call\n${debugInfo}Error: ${errorMessage}`);
       }
 
-      return ResponseFormatter.formatError(`Error ejecutando SQL: ${error.message}`);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Error desconocido ejecutando SQL';
+      return ResponseFormatter.formatError(`DEBUG: Error general en ExecuteSqlTool.execute\nError: ${errorMessage}`);
     }
   }
 
@@ -121,33 +107,33 @@ export class ExecuteSqlTool {
     };
   }
 
-  private static formatSqlResult(result: any, queryType: string, executionTime: number, maxRows: number): string {
+  private static formatSqlResult(result: any): string {
     let responseText = `# ✅ Query SQL Ejecutada Exitosamente\n\n`;
-    responseText += `**Tipo de Operación:** ${queryType}\n`;
-    responseText += `**Tiempo de Ejecución:** ${executionTime}ms\n\n`;
+    responseText += `**Tipo de Operación:** ${result.query_type}\n`;
+    responseText += `**Tiempo de Ejecución:** ${result.execution_time_ms}ms\n\n`;
 
-    switch (queryType) {
+    switch (result.query_type) {
       case 'SELECT':
       case 'CTE_SELECT':
-        return this.formatSelectResult(result, executionTime, maxRows);
+        return this.formatSelectResult(result);
       
       case 'INSERT':
         responseText += `## Resultado de INSERT\n\n`;
-        responseText += `- **Filas Afectadas:** ${result.rowsAffected[0] || 0}\n`;
-        if (result.recordset && result.recordset.length > 0) {
-          responseText += `- **Registros Retornados:** ${result.recordset.length}\n\n`;
-          responseText += this.formatResultSet(result.recordset, maxRows);
+        responseText += `- **Filas Afectadas:** ${result.rows_affected || 0}\n`;
+        if (result.data && result.data.length > 0) {
+          responseText += `- **Registros Retornados:** ${result.data.length}\n\n`;
+          responseText += this.formatResultSet(result.data, result.columns);
         }
         break;
 
       case 'UPDATE':
         responseText += `## Resultado de UPDATE\n\n`;
-        responseText += `- **Filas Actualizadas:** ${result.rowsAffected[0] || 0}\n`;
+        responseText += `- **Filas Actualizadas:** ${result.rows_affected || 0}\n`;
         break;
 
       case 'DELETE':
         responseText += `## Resultado de DELETE\n\n`;
-        responseText += `- **Filas Eliminadas:** ${result.rowsAffected[0] || 0}\n`;
+        responseText += `- **Filas Eliminadas:** ${result.rows_affected || 0}\n`;
         break;
 
       case 'CREATE_TABLE':
@@ -167,59 +153,56 @@ export class ExecuteSqlTool {
 
       case 'CREATE_VIEW':
       case 'ALTER_VIEW':
-        responseText += `## Vista ${queryType === 'CREATE_VIEW' ? 'Creada' : 'Alterada'} Exitosamente\n\n`;
-        responseText += `La vista ha sido ${queryType === 'CREATE_VIEW' ? 'creada' : 'modificada'} correctamente.\n`;
+        responseText += `## Vista ${result.query_type === 'CREATE_VIEW' ? 'Creada' : 'Alterada'} Exitosamente\n\n`;
+        responseText += `La vista ha sido ${result.query_type === 'CREATE_VIEW' ? 'creada' : 'modificada'} correctamente.\n`;
         break;
 
       default:
         responseText += `## Operación Completada\n\n`;
-        if (result.rowsAffected && result.rowsAffected.length > 0) {
-          responseText += `- **Filas Afectadas:** ${result.rowsAffected[0]}\n`;
+        if (result.rows_affected) {
+          responseText += `- **Filas Afectadas:** ${result.rows_affected}\n`;
         }
     }
 
     return responseText;
   }
 
-  private static formatSelectResult(result: any, executionTime: number, maxRows: number): string {
+  private static formatSelectResult(result: any): string {
     let responseText = `# 📊 Resultados de SELECT\n\n`;
-    responseText += `**Tiempo de Ejecución:** ${executionTime}ms\n`;
+    responseText += `**Tiempo de Ejecución:** ${result.execution_time_ms}ms\n`;
     
-    if (!result.recordset || result.recordset.length === 0) {
+    if (!result.data || result.data.length === 0) {
       responseText += `**Filas Encontradas:** 0\n\n> No se encontraron registros que coincidan con la consulta.`;
       return responseText;
     }
 
-    const totalRows = result.recordset.length;
-    const displayRows = Math.min(totalRows, maxRows);
+    const totalRows = result.data.length;
     
     responseText += `**Filas Encontradas:** ${totalRows}\n`;
-    responseText += `**Filas Mostradas:** ${displayRows}\n\n`;
+    responseText += `**Filas Mostradas:** ${totalRows}\n\n`;
 
-    if (totalRows > maxRows) {
-      responseText += `> ⚠️ Se encontraron ${totalRows} filas, pero solo se muestran las primeras ${maxRows}. Usa el parámetro maxRows para ajustar este límite.\n\n`;
-    }
-
-    responseText += this.formatResultSet(result.recordset.slice(0, maxRows), maxRows);
+    responseText += this.formatResultSet(result.data, result.columns);
 
     return responseText;
   }
 
-  private static formatResultSet(recordset: any[], maxRows: number): string {
-    if (!recordset || recordset.length === 0) {
+  private static formatResultSet(data: any[][], columns: string[]): string {
+    if (!data || data.length === 0) {
       return '> No hay datos para mostrar.';
     }
 
-    const columns = Object.keys(recordset[0]);
+    if (!columns || columns.length === 0) {
+      return '> No hay columnas definidas.';
+    }
+
     let resultText = `## Datos\n\n`;
 
     // Crear tabla en formato Markdown
     resultText += `| ${columns.join(' | ')} |\n`;
     resultText += `| ${columns.map(() => '---').join(' | ')} |\n`;
 
-    for (const row of recordset) {
-      const values = columns.map(col => {
-        let value = row[col];
+    for (const row of data) {
+      const values = row.map(value => {
         if (value === null || value === undefined) {
           return 'NULL';
         }
