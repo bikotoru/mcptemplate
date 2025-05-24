@@ -1,0 +1,329 @@
+/**
+ * API Route para {{ENTITY_NAME}} por ID - Operaciones de detalle, actualización y eliminación
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+import { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
+import { {{ENTITY_NAME_LOWER}}Schema } from '../../../validation/{{ENTITY_NAME_LOWER}}';
+// import { getServerSession } from 'next-auth/next';
+// import { authOptions } from '../../auth/[...nextauth]';
+// import { prisma } from '@/lib/prisma'; // Ajusta según tu ORM
+// import { dbConnect } from '@/lib/mongodb'; // O tu conexión a DB
+
+// Schema para validar el ID
+const idSchema = z.object({
+  id: z.string().min(1, 'ID es requerido'),
+});
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  try {
+    // Verificar autenticación (opcional)
+    // const session = await getServerSession(req, res, authOptions);
+    // if (!session) {
+    //   return res.status(401).json({ error: 'No autorizado' });
+    // }
+
+    // Validar ID del parámetro
+    const { id } = idSchema.parse(req.query);
+
+    switch (req.method) {
+      case 'GET':
+        return await handleGet(req, res, id);
+      case 'PUT':
+        return await handlePut(req, res, id);
+      case 'DELETE':
+        return await handleDelete(req, res, id);
+      default:
+        res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+        return res.status(405).json({ error: `Método ${req.method} no permitido` });
+    }
+  } catch (error) {
+    console.error(`Error in {{ENTITY_NAME_LOWER}} API [id]:`, error);
+    
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Parámetros inválidos',
+        details: error.errors 
+      });
+    }
+
+    return res.status(500).json({ 
+      error: 'Error interno del servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+
+/**
+ * GET - Obtener {{ENTITY_NAME_LOWER}} por ID
+ */
+async function handleGet(req: NextApiRequest, res: NextApiResponse, id: string) {
+  {{#unless PERMISSIONS.read}}
+  return res.status(403).json({ error: 'No tienes permisos para leer {{ENTITY_NAME_PLURAL_LOWER}}' });
+  {{/unless}}
+
+  try {
+    // Ejemplo con Prisma
+    /*
+    const {{ENTITY_NAME_LOWER}} = await prisma.{{ENTITY_NAME_LOWER}}.findUnique({
+      where: { id },
+      include: {
+        {{#each FIELDS}}
+        {{#if (eq type 'relation')}}
+        {{name}}: {{#if relation.multiple}}true{{else}}{
+          select: {
+            {{relation.valueField}}: true,
+            {{relation.displayField}}: true,
+          }
+        }{{/if}},
+        {{/if}}
+        {{/each}}
+      },
+    });
+
+    if (!{{ENTITY_NAME_LOWER}}) {
+      return res.status(404).json({ error: '{{ENTITY_NAME}} no encontrado' });
+    }
+    */
+
+    // Mock de datos - Reemplazar con tu lógica
+    const {{ENTITY_NAME_LOWER}} = generateMock{{ENTITY_NAME}}(id);
+    
+    if (!{{ENTITY_NAME_LOWER}}) {
+      return res.status(404).json({ error: '{{ENTITY_NAME}} no encontrado' });
+    }
+
+    return res.status(200).json({{ENTITY_NAME_LOWER}});
+
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * PUT - Actualizar {{ENTITY_NAME_LOWER}} por ID
+ */
+async function handlePut(req: NextApiRequest, res: NextApiResponse, id: string) {
+  {{#unless PERMISSIONS.update}}
+  return res.status(403).json({ error: 'No tienes permisos para actualizar {{ENTITY_NAME_PLURAL_LOWER}}' });
+  {{/unless}}
+
+  try {
+    // Validar datos del cuerpo de la petición
+    const validatedData = {{ENTITY_NAME_LOWER}}Schema.parse(req.body);
+
+    // Verificar que el {{ENTITY_NAME_LOWER}} existe
+    /*
+    const existing{{ENTITY_NAME}} = await prisma.{{ENTITY_NAME_LOWER}}.findUnique({
+      where: { id },
+    });
+
+    if (!existing{{ENTITY_NAME}}) {
+      return res.status(404).json({ error: '{{ENTITY_NAME}} no encontrado' });
+    }
+    */
+
+    // Procesar relaciones si existen
+    const processedData = { ...validatedData };
+    
+    {{#each FIELDS}}
+    {{#if (eq type 'relation')}}
+    if (processedData.{{name}}) {
+      {{#if relation.multiple}}
+      // Actualizar múltiples relaciones
+      processedData.{{name}} = {
+        set: [], // Desconectar todas las relaciones existentes
+        connect: processedData.{{name}}.map((item: any) => ({ 
+          {{relation.valueField}}: item.{{relation.valueField}} 
+        }))
+      };
+      {{else}}
+      // Actualizar relación única
+      processedData.{{name}} = {
+        connect: { {{relation.valueField}}: processedData.{{name}}.{{relation.valueField}} }
+      };
+      {{/if}}
+    } else {
+      {{#if relation.multiple}}
+      // Desconectar todas las relaciones si no se proporcionan
+      processedData.{{name}} = { set: [] };
+      {{else}}
+      // Desconectar relación si es null/undefined
+      processedData.{{name}} = { disconnect: true };
+      {{/if}}
+    }
+    {{/if}}
+    {{/each}}
+
+    // Ejemplo con Prisma
+    /*
+    const updated{{ENTITY_NAME}} = await prisma.{{ENTITY_NAME_LOWER}}.update({
+      where: { id },
+      data: {
+        ...processedData,
+        updatedAt: new Date(),
+      },
+      include: {
+        {{#each FIELDS}}
+        {{#if (eq type 'relation')}}
+        {{name}}: {{#if relation.multiple}}true{{else}}{
+          select: {
+            {{relation.valueField}}: true,
+            {{relation.displayField}}: true,
+          }
+        }{{/if}},
+        {{/if}}
+        {{/each}}
+      },
+    });
+    */
+
+    // Mock de actualización - Reemplazar con tu lógica
+    const updated{{ENTITY_NAME}} = {
+      id,
+      ...validatedData,
+      updatedAt: new Date(),
+      createdAt: new Date(Date.now() - 86400000), // Hace 1 día
+    };
+
+    return res.status(200).json(updated{{ENTITY_NAME}});
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Datos inválidos',
+        details: error.errors 
+      });
+    }
+    throw error;
+  }
+}
+
+/**
+ * DELETE - Eliminar {{ENTITY_NAME_LOWER}} por ID
+ */
+async function handleDelete(req: NextApiRequest, res: NextApiResponse, id: string) {
+  {{#unless PERMISSIONS.delete}}
+  return res.status(403).json({ error: 'No tienes permisos para eliminar {{ENTITY_NAME_PLURAL_LOWER}}' });
+  {{/unless}}
+
+  try {
+    // Verificar que el {{ENTITY_NAME_LOWER}} existe
+    /*
+    const existing{{ENTITY_NAME}} = await prisma.{{ENTITY_NAME_LOWER}}.findUnique({
+      where: { id },
+    });
+
+    if (!existing{{ENTITY_NAME}}) {
+      return res.status(404).json({ error: '{{ENTITY_NAME}} no encontrado' });
+    }
+    */
+
+    // Verificar dependencias antes de eliminar (opcional)
+    /*
+    const dependencies = await checkDependencies(id);
+    if (dependencies.length > 0) {
+      return res.status(409).json({ 
+        error: 'No se puede eliminar: tiene dependencias',
+        dependencies 
+      });
+    }
+    */
+
+    // Ejemplo con Prisma
+    /*
+    await prisma.{{ENTITY_NAME_LOWER}}.delete({
+      where: { id },
+    });
+    */
+
+    // Mock de eliminación - Reemplazar con tu lógica
+    const mockExists = generateMock{{ENTITY_NAME}}(id);
+    if (!mockExists) {
+      return res.status(404).json({ error: '{{ENTITY_NAME}} no encontrado' });
+    }
+
+    return res.status(200).json({ 
+      message: '{{ENTITY_NAME}} eliminado exitosamente',
+      id 
+    });
+
+  } catch (error) {
+    // Manejar errores específicos de base de datos
+    if (error.code === 'P2025') { // Prisma: Record not found
+      return res.status(404).json({ error: '{{ENTITY_NAME}} no encontrado' });
+    }
+    
+    if (error.code === 'P2003') { // Prisma: Foreign key constraint
+      return res.status(409).json({ 
+        error: 'No se puede eliminar: tiene dependencias' 
+      });
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Función auxiliar para generar datos mock
+ * Reemplazar con tu lógica de base de datos
+ */
+function generateMock{{ENTITY_NAME}}(id: string) {
+  // Esta es una implementación mock - reemplazar con tu lógica real
+  if (id.startsWith('mock_')) {
+    return {
+      id,
+      {{#each FIELDS}}
+      {{#if (eq type 'text')}}
+      {{name}}: `{{label}} de prueba`,
+      {{else if (eq type 'number')}}
+      {{name}}: 42,
+      {{else if (eq type 'boolean')}}
+      {{name}}: true,
+      {{else if (eq type 'date')}}
+      {{name}}: new Date(),
+      {{else if (eq type 'email')}}
+      {{name}}: 'test@example.com',
+      {{else if (eq type 'select')}}
+      {{name}}: {{#if validation.options}}'{{@first validation.options}}'{{else}}'option1'{{/if}},
+      {{else if (eq type 'relation')}}
+      {{name}}: {{#if relation.multiple}}[{ {{relation.valueField}}: 'rel_1', {{relation.displayField}}: 'Relación de prueba' }]{{else}}{ {{relation.valueField}}: 'rel_1', {{relation.displayField}}: 'Relación de prueba' }{{/if}},
+      {{else}}
+      {{name}}: '{{label}} de prueba',
+      {{/if}}
+      {{/each}}
+      createdAt: new Date(Date.now() - 86400000), // Hace 1 día
+      updatedAt: new Date(),
+    };
+  }
+  return null; // No encontrado
+}
+
+/**
+ * Función auxiliar para verificar dependencias antes de eliminar
+ * Implementar según tu lógica de negocio
+ */
+/*
+async function checkDependencies(id: string): Promise<string[]> {
+  const dependencies: string[] = [];
+  
+  // Ejemplo: verificar si hay registros relacionados
+  {{#each FIELDS}}
+  {{#if (eq type 'relation')}}
+  const related{{capitalize name}} = await prisma.{{lower relation.relationEntity}}.count({
+    where: { {{../ENTITY_NAME_LOWER}}Id: id }
+  });
+  if (related{{capitalize name}} > 0) {
+    dependencies.push(`${related{{capitalize name}} } {{lower relation.relationEntity}}(s) relacionado(s)`);
+  }
+  {{/if}}
+  {{/each}}
+  
+  return dependencies;
+}
+*/

@@ -1,0 +1,361 @@
+/**
+ * API Route para {{ENTITY_NAME_PLURAL}} - Operaciones de lista y creación
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+import { NextApiRequest, NextApiResponse } from 'next';
+import { z } from 'zod';
+import { {{ENTITY_NAME_LOWER}}Schema } from '../../validation/{{ENTITY_NAME_LOWER}}';
+// import { getServerSession } from 'next-auth/next';
+// import { authOptions } from '../auth/[...nextauth]';
+// import { prisma } from '@/lib/prisma'; // Ajusta según tu ORM
+// import { dbConnect } from '@/lib/mongodb'; // O tu conexión a DB
+
+// Schema para parámetros de consulta
+const querySchema = z.object({
+  page: z.string().optional().default('1').transform(Number),
+  limit: z.string().optional().default('10').transform(Number),
+  search: z.string().optional(),
+  sort: z.string().optional(),
+  order: z.enum(['asc', 'desc']).optional().default('asc'),
+  {{#each FIELDS}}
+  {{#if filterable}}
+  {{#if (eq type 'number')}}
+  {{name}}_min: z.string().optional().transform(val => val ? Number(val) : undefined),
+  {{name}}_max: z.string().optional().transform(val => val ? Number(val) : undefined),
+  {{else if (eq type 'date')}}
+  {{name}}_start: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  {{name}}_end: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  {{else if (eq type 'boolean')}}
+  {{name}}: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+  {{else if (eq type 'relation')}}
+  {{name}}: z.string().optional().transform(val => val ? val.split(',') : undefined),
+  {{else if (eq type 'select')}}
+  {{name}}: z.string().optional().transform(val => val ? val.split(',') : undefined),
+  {{else}}
+  {{name}}: z.string().optional(),
+  {{/if}}
+  {{/if}}
+  {{/each}}
+});
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  try {
+    // Verificar autenticación (opcional)
+    // const session = await getServerSession(req, res, authOptions);
+    // if (!session) {
+    //   return res.status(401).json({ error: 'No autorizado' });
+    // }
+
+    switch (req.method) {
+      case 'GET':
+        return await handleGet(req, res);
+      case 'POST':
+        return await handlePost(req, res);
+      default:
+        res.setHeader('Allow', ['GET', 'POST']);
+        return res.status(405).json({ error: `Método ${req.method} no permitido` });
+    }
+  } catch (error) {
+    console.error('Error in {{ENTITY_NAME_LOWER}} API:', error);
+    return res.status(500).json({ 
+      error: 'Error interno del servidor',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+}
+
+/**
+ * GET - Obtener lista de {{ENTITY_NAME_PLURAL_LOWER}} con filtros y paginación
+ */
+async function handleGet(req: NextApiRequest, res: NextApiResponse) {
+  {{#unless PERMISSIONS.read}}
+  return res.status(403).json({ error: 'No tienes permisos para leer {{ENTITY_NAME_PLURAL_LOWER}}' });
+  {{/unless}}
+
+  try {
+    // Validar parámetros de consulta
+    const query = querySchema.parse(req.query);
+    
+    const {
+      page,
+      limit,
+      search,
+      sort,
+      order,
+      {{#each FIELDS}}
+      {{#if filterable}}
+      {{#if (eq type 'number')}}
+      {{name}}_min,
+      {{name}}_max,
+      {{else if (eq type 'date')}}
+      {{name}}_start,
+      {{name}}_end,
+      {{else}}
+      {{name}},
+      {{/if}}
+      {{/if}}
+      {{/each}}
+    } = query;
+
+    // Calcular offset para paginación
+    const offset = (page - 1) * limit;
+
+    // Construir filtros de búsqueda
+    const filters: any = {};
+    
+    // Búsqueda general en campos searchable
+    if (search) {
+      {{#if (some FIELDS 'searchable')}}
+      filters.OR = [
+        {{#each FIELDS}}
+        {{#if searchable}}
+        {{#if (eq type 'text')}}
+        { {{name}}: { contains: search, mode: 'insensitive' } },
+        {{else if (eq type 'email')}}
+        { {{name}}: { contains: search, mode: 'insensitive' } },
+        {{else if (eq type 'textarea')}}
+        { {{name}}: { contains: search, mode: 'insensitive' } },
+        {{/if}}
+        {{/if}}
+        {{/each}}
+      ];
+      {{/if}}
+    }
+
+    // Filtros específicos por campo
+    {{#each FIELDS}}
+    {{#if filterable}}
+    {{#if (eq type 'number')}}
+    if ({{name}}_min !== undefined) {
+      filters.{{name}} = { ...filters.{{name}}, gte: {{name}}_min };
+    }
+    if ({{name}}_max !== undefined) {
+      filters.{{name}} = { ...filters.{{name}}, lte: {{name}}_max };
+    }
+    {{else if (eq type 'date')}}
+    if ({{name}}_start !== undefined) {
+      filters.{{name}} = { ...filters.{{name}}, gte: {{name}}_start };
+    }
+    if ({{name}}_end !== undefined) {
+      filters.{{name}} = { ...filters.{{name}}, lte: {{name}}_end };
+    }
+    {{else if (eq type 'boolean')}}
+    if ({{name}} !== undefined) {
+      filters.{{name}} = {{name}};
+    }
+    {{else if (eq type 'relation')}}
+    if ({{name}} && {{name}}.length > 0) {
+      {{#if relation.multiple}}
+      filters.{{name}} = { some: { {{relation.valueField}}: { in: {{name}} } } };
+      {{else}}
+      filters.{{name}} = { {{relation.valueField}}: { in: {{name}} } };
+      {{/if}}
+    }
+    {{else if (eq type 'select')}}
+    if ({{name}} && {{name}}.length > 0) {
+      filters.{{name}} = { in: {{name}} };
+    }
+    {{else}}
+    if ({{name}}) {
+      filters.{{name}} = { contains: {{name}}, mode: 'insensitive' };
+    }
+    {{/if}}
+    {{/if}}
+    {{/each}}
+
+    // Construir ordenamiento
+    let orderBy: any = { createdAt: 'desc' }; // Default
+    if (sort) {
+      {{#each FIELDS}}
+      {{#if sortable}}
+      if (sort === '{{name}}') {
+        orderBy = { {{name}}: order };
+      }
+      {{/if}}
+      {{/each}}
+    }
+
+    // Ejemplo con Prisma - Ajusta según tu ORM/Base de datos
+    /*
+    const [{{ENTITY_NAME_PLURAL_LOWER}}, total] = await Promise.all([
+      prisma.{{ENTITY_NAME_LOWER}}.findMany({
+        where: filters,
+        orderBy,
+        skip: offset,
+        take: limit,
+        include: {
+          {{#each FIELDS}}
+          {{#if (eq type 'relation')}}
+          {{name}}: {{#if relation.multiple}}true{{else}}{
+            select: {
+              {{relation.valueField}}: true,
+              {{relation.displayField}}: true,
+            }
+          }{{/if}},
+          {{/if}}
+          {{/each}}
+        },
+      }),
+      prisma.{{ENTITY_NAME_LOWER}}.count({ where: filters }),
+    ]);
+    */
+
+    // Ejemplo de datos mock - Reemplazar con tu lógica de base de datos
+    const mockData = generateMockData(limit, offset, filters);
+    const {{ENTITY_NAME_PLURAL_LOWER}} = mockData.data;
+    const total = mockData.total;
+
+    // Metadatos de paginación
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    return res.status(200).json({
+      data: {{ENTITY_NAME_PLURAL_LOWER}},
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage,
+        hasPrevPage,
+      },
+      filters: {
+        search,
+        sort,
+        order,
+        {{#each FIELDS}}
+        {{#if filterable}}
+        {{name}},
+        {{/if}}
+        {{/each}}
+      },
+    });
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Parámetros de consulta inválidos',
+        details: error.errors 
+      });
+    }
+    throw error;
+  }
+}
+
+/**
+ * POST - Crear nuevo {{ENTITY_NAME_LOWER}}
+ */
+async function handlePost(req: NextApiRequest, res: NextApiResponse) {
+  {{#unless PERMISSIONS.create}}
+  return res.status(403).json({ error: 'No tienes permisos para crear {{ENTITY_NAME_PLURAL_LOWER}}' });
+  {{/unless}}
+
+  try {
+    // Validar datos del cuerpo de la petición
+    const validatedData = {{ENTITY_NAME_LOWER}}Schema.parse(req.body);
+
+    // Procesar relaciones si existen
+    const processedData = { ...validatedData };
+    
+    {{#each FIELDS}}
+    {{#if (eq type 'relation')}}
+    if (processedData.{{name}}) {
+      {{#if relation.multiple}}
+      // Conectar múltiples relaciones
+      processedData.{{name}} = {
+        connect: processedData.{{name}}.map((item: any) => ({ 
+          {{relation.valueField}}: item.{{relation.valueField}} 
+        }))
+      };
+      {{else}}
+      // Conectar relación única
+      processedData.{{name}} = {
+        connect: { {{relation.valueField}}: processedData.{{name}}.{{relation.valueField}} }
+      };
+      {{/if}}
+    }
+    {{/if}}
+    {{/each}}
+
+    // Ejemplo con Prisma
+    /*
+    const new{{ENTITY_NAME}} = await prisma.{{ENTITY_NAME_LOWER}}.create({
+      data: processedData,
+      include: {
+        {{#each FIELDS}}
+        {{#if (eq type 'relation')}}
+        {{name}}: {{#if relation.multiple}}true{{else}}{
+          select: {
+            {{relation.valueField}}: true,
+            {{relation.displayField}}: true,
+          }
+        }{{/if}},
+        {{/if}}
+        {{/each}}
+      },
+    });
+    */
+
+    // Mock de creación - Reemplazar con tu lógica
+    const new{{ENTITY_NAME}} = {
+      id: `mock_${Date.now()}`,
+      ...validatedData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    return res.status(201).json(new{{ENTITY_NAME}});
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Datos inválidos',
+        details: error.errors 
+      });
+    }
+    throw error;
+  }
+}
+
+/**
+ * Función auxiliar para generar datos mock
+ * Reemplazar con tu lógica de base de datos
+ */
+function generateMockData(limit: number, offset: number, filters: any) {
+  // Esta es una implementación mock - reemplazar con tu lógica real
+  const mockItems = Array.from({ length: 50 }, (_, i) => ({
+    id: `mock_${i + 1}`,
+    {{#each FIELDS}}
+    {{#if (eq type 'text')}}
+    {{name}}: `{{label}} ${i + 1}`,
+    {{else if (eq type 'number')}}
+    {{name}}: Math.floor(Math.random() * 1000),
+    {{else if (eq type 'boolean')}}
+    {{name}}: Math.random() > 0.5,
+    {{else if (eq type 'date')}}
+    {{name}}: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000),
+    {{else if (eq type 'email')}}
+    {{name}}: `user${i + 1}@example.com`,
+    {{else if (eq type 'select')}}
+    {{name}}: {{#if validation.options}}'{{@first validation.options}}'{{else}}'option1'{{/if}},
+    {{else if (eq type 'relation')}}
+    {{name}}: {{#if relation.multiple}}[{ {{relation.valueField}}: `rel_${i + 1}`, {{relation.displayField}}: `Relación ${i + 1}` }]{{else}}{ {{relation.valueField}}: `rel_${i + 1}`, {{relation.displayField}}: `Relación ${i + 1}` }{{/if}},
+    {{else}}
+    {{name}}: `{{label}} ${i + 1}`,
+    {{/if}}
+    {{/each}}
+    createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000),
+    updatedAt: new Date(),
+  }));
+
+  return {
+    data: mockItems.slice(offset, offset + limit),
+    total: mockItems.length,
+  };
+}

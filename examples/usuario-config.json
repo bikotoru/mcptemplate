@@ -1,0 +1,87 @@
+{
+  "targetPath": "./src/modules/usuarios",
+  "entityName": "Usuario",
+  "entityNamePlural": "Usuarios",
+  "fields": [
+    {
+      "name": "nombre",
+      "type": "text",
+      "label": "Nombre",
+      "required": true,
+      "validation": {
+        "min": 2,
+        "max": 50
+      },
+      "searchable": true,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true,
+      "placeholder": "Nombre completo"
+    },
+    {
+      "name": "email",
+      "type": "email",
+      "label": "Correo Electrónico",
+      "required": true,
+      "searchable": true,
+      "sortable": true,
+      "filterable": false,
+      "showInList": true,
+      "placeholder": "usuario@ejemplo.com"
+    },
+    {
+      "name": "telefono",
+      "type": "text",
+      "label": "Teléfono",
+      "required": false,
+      "validation": {
+        "pattern": "^[0-9+\\-\\s()]+$"
+      },
+      "searchable": true,
+      "sortable": false,
+      "filterable": false,
+      "showInList": true,
+      "placeholder": "+1 234 567 890"
+    },
+    {
+      "name": "rol",
+      "type": "select",
+      "label": "Rol",
+      "required": true,
+      "validation": {
+        "options": ["admin", "editor", "viewer"]
+      },
+      "searchable": false,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true
+    },
+    {
+      "name": "activo",
+      "type": "boolean",
+      "label": "Activo",
+      "required": true,
+      "searchable": false,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true
+    },
+    {
+      "name": "fechaRegistro",
+      "type": "date",
+      "label": "Fecha de Registro",
+      "required": true,
+      "searchable": false,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true
+    }
+  ],
+  "apiEndpoint": "/api/usuarios",
+  "permissions": {
+    "create": true,
+    "read": true,
+    "update": true,
+    "delete": false
+  }
+}

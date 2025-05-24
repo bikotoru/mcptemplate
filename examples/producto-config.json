@@ -1,0 +1,139 @@
+{
+  "targetPath": "./src/modules/productos",
+  "entityName": "Producto",
+  "entityNamePlural": "Productos",
+  "fields": [
+    {
+      "name": "nombre",
+      "type": "text",
+      "label": "Nombre",
+      "required": true,
+      "validation": {
+        "min": 2,
+        "max": 100
+      },
+      "searchable": true,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true,
+      "placeholder": "Ingrese el nombre del producto"
+    },
+    {
+      "name": "descripcion",
+      "type": "textarea",
+      "label": "Descripción",
+      "required": false,
+      "validation": {
+        "max": 500
+      },
+      "searchable": true,
+      "sortable": false,
+      "filterable": false,
+      "showInList": false,
+      "placeholder": "Descripción opcional del producto"
+    },
+    {
+      "name": "marca",
+      "type": "relation",
+      "label": "Marca",
+      "required": true,
+      "searchable": true,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true,
+      "placeholder": "Seleccione una marca",
+      "relation": {
+        "endpoint": "/api/marcas/search",
+        "displayField": "nombre",
+        "valueField": "id",
+        "searchFields": ["nombre", "codigo"],
+        "multiple": false,
+        "preload": false,
+        "minChars": 2,
+        "relationEntity": "Marca",
+        "allowCreate": true
+      }
+    },
+    {
+      "name": "categorias",
+      "type": "relation",
+      "label": "Categorías",
+      "required": true,
+      "searchable": false,
+      "sortable": false,
+      "filterable": true,
+      "showInList": true,
+      "placeholder": "Seleccione categorías",
+      "relation": {
+        "endpoint": "/api/categorias/search",
+        "displayField": "nombre",
+        "valueField": "id",
+        "searchFields": ["nombre"],
+        "multiple": true,
+        "preload": true,
+        "minChars": 1,
+        "relationEntity": "Categoria",
+        "allowCreate": false
+      }
+    },
+    {
+      "name": "precio",
+      "type": "number",
+      "label": "Precio",
+      "required": true,
+      "validation": {
+        "min": 0
+      },
+      "searchable": false,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true,
+      "placeholder": "0.00"
+    },
+    {
+      "name": "imagen",
+      "type": "file",
+      "label": "Imagen",
+      "required": false,
+      "validation": {
+        "accept": "image/*"
+      },
+      "searchable": false,
+      "sortable": false,
+      "filterable": false,
+      "showInList": false,
+      "placeholder": "Seleccionar imagen"
+    },
+    {
+      "name": "activo",
+      "type": "boolean",
+      "label": "Activo",
+      "required": true,
+      "searchable": false,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true
+    },
+    {
+      "name": "fechaLanzamiento",
+      "type": "date",
+      "label": "Fecha de Lanzamiento",
+      "required": false,
+      "searchable": false,
+      "sortable": true,
+      "filterable": true,
+      "showInList": true
+    }
+  ],
+  "apiEndpoint": "/api/productos",
+  "relationEndpoints": {
+    "marca": "/api/marcas",
+    "categorias": "/api/categorias"
+  },
+  "permissions": {
+    "create": true,
+    "read": true,
+    "update": true,
+    "delete": true
+  }
+}

@@ -1,0 +1,204 @@
+/**
+ * Página principal de {{ENTITY_NAME_PLURAL}}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+import React from 'react';
+import { GetServerSideProps } from 'next';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { QueryClient, dehydrate } from '@tanstack/react-query';
+import { {{ENTITY_NAME}}List } from '../../components/{{ENTITY_NAME}}List';
+import { use{{ENTITY_NAME}} } from '../../hooks/use{{ENTITY_NAME}}';
+import { Layout } from '@/components/Layout';
+import { PageHeader } from '@/components/PageHeader';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
+import type { {{ENTITY_NAME}} } from '../../types/{{ENTITY_NAME_LOWER}}';
+
+interface {{ENTITY_NAME_PLURAL}}PageProps {
+  initialData?: {{ENTITY_NAME}}[];
+  total?: number;
+  error?: string;
+}
+
+const {{ENTITY_NAME_PLURAL}}Page: React.FC<{{ENTITY_NAME_PLURAL}}PageProps> = ({
+  initialData,
+  total = 0,
+  error
+}) => {
+  const router = useRouter();
+
+  // Breadcrumbs para navegación
+  const breadcrumbs = [
+    { label: 'Inicio', href: '/' },
+    { label: '{{ENTITY_NAME_PLURAL}}', href: '/{{ENTITY_NAME_LOWER}}' }
+  ];
+
+  const pageTitle = `{{ENTITY_NAME_PLURAL}} (${total})`;
+  const pageDescription = `Administra y gestiona todos los {{ENTITY_NAME_PLURAL_LOWER}} del sistema. Crear, editar, eliminar y filtrar registros de {{ENTITY_NAME_PLURAL_LOWER}}.`;
+
+  // Mostrar error si hay problemas en el servidor
+  if (error) {
+    return (
+      <Layout>
+        <Head>
+          <title>Error - {{ENTITY_NAME_PLURAL}} | Tu App</title>
+          <meta name="description" content="Error al cargar {{ENTITY_NAME_PLURAL_LOWER}}" />
+        </Head>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Error al cargar {{ENTITY_NAME_PLURAL_LOWER}}
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={() => router.reload()}
+                    className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <Head>
+        <title>{pageTitle} | Tu App</title>
+        <meta name="description" content={pageDescription} />
+        <meta name="keywords" content="{{ENTITY_NAME_LOWER}}, {{ENTITY_NAME_PLURAL_LOWER}}, gestión, administración, CRUD" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:type" content="website" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href={`${process.env.NEXT_PUBLIC_APP_URL}/{{ENTITY_NAME_LOWER}}`} />
+      </Head>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumbs */}
+        <Breadcrumbs items={breadcrumbs} className="mb-6" />
+
+        {/* Header de página */}
+        <PageHeader
+          title="{{ENTITY_NAME_PLURAL}}"
+          description={`Gestiona todos los {{ENTITY_NAME_PLURAL_LOWER}} del sistema. ${total ? `${total} registro${total !== 1 ? 's' : ''} total${total !== 1 ? 'es' : ''}` : 'Sin registros'}.`}
+          {{#if PERMISSIONS.create}}
+          action={ {
+            label: 'Crear {{ENTITY_NAME}}',
+            href: '/{{ENTITY_NAME_LOWER}}/create',
+            variant: 'primary'
+          }}
+          {{/if}}
+        />
+
+        {/* Componente principal de lista */}
+        <{{ENTITY_NAME}}List
+          initialData={initialData}
+          pageSize={20}
+        />
+      </div>
+    </Layout>
+  );
+};
+
+export default {{ENTITY_NAME_PLURAL}}Page;
+
+// Función para obtener datos del servidor (SSR)
+export const getServerSideProps: GetServerSideProps<{{ENTITY_NAME_PLURAL}}PageProps> = async (context) => {
+  const queryClient = new QueryClient();
+
+  try {
+    // Parámetros de consulta
+    const { 
+      page = '1', 
+      limit = '20', 
+      search = '', 
+      sort = '', 
+      order = 'asc',
+      ...filters 
+    } = context.query;
+
+    // Construir URL de API con parámetros
+    const searchParams = new URLSearchParams();
+    searchParams.set('page', page as string);
+    searchParams.set('limit', limit as string);
+    
+    if (search) searchParams.set('search', search as string);
+    if (sort) searchParams.set('sort', sort as string);
+    if (order) searchParams.set('order', order as string);
+    
+    // Agregar filtros
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && typeof value === 'string') {
+        searchParams.set(key, value);
+      }
+    });
+
+    const apiUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}{{API_ENDPOINT}}?${searchParams.toString()}`;
+
+    // Realizar petición al API
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        // Pasar cookies para autenticación si es necesario
+        'Cookie': context.req.headers.cookie || '',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Pre-poblar el cache de React Query
+    await queryClient.prefetchQuery({
+      queryKey: ['{{ENTITY_NAME_LOWER}}-list', { page, limit, search, sort, order, ...filters }],
+      queryFn: () => data,
+    });
+
+    return {
+      props: {
+        initialData: data.data || [],
+        total: data.total || 0,
+        dehydratedState: dehydrate(queryClient),
+      },
+    };
+
+  } catch (error) {
+    console.error('Error loading {{ENTITY_NAME_PLURAL_LOWER}}:', error);
+
+    return {
+      props: {
+        error: error instanceof Error ? error.message : 'Error desconocido al cargar {{ENTITY_NAME_PLURAL_LOWER}}',
+        initialData: [],
+        total: 0,
+      },
+    };
+  }
+};

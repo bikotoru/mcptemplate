@@ -1,0 +1,350 @@
+/**
+ * Componente de tabla para {{ENTITY_NAME_PLURAL}}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+import React, { useMemo } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import {
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
+} from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import type { {{ENTITY_NAME}} } from '../types/{{ENTITY_NAME_LOWER}}';
+import type { CRUDPermissions } from '../types';
+
+interface {{ENTITY_NAME}}TableProps {
+  data: {{ENTITY_NAME}}[];
+  sortField?: string;
+  sortDirection?: 'asc' | 'desc';
+  onSort?: (field: string) => void;
+  selectedItems?: string[];
+  onSelectItem?: (id: string, selected: boolean) => void;
+  onSelectAll?: (selected: boolean) => void;
+  onView?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  permissions: CRUDPermissions;
+  isLoading?: boolean;
+}
+
+export const {{ENTITY_NAME}}Table: React.FC<{{ENTITY_NAME}}TableProps> = ({
+  data,
+  sortField,
+  sortDirection,
+  onSort,
+  selectedItems = [],
+  onSelectItem,
+  onSelectAll,
+  onView,
+  onEdit,
+  onDelete,
+  permissions,
+  isLoading
+}) => {
+  // Configuración de columnas dinámicas
+  const columns = useMemo(() => [
+    // Columna de selección (si se puede eliminar)
+    ...(permissions.delete && onSelectItem ? [{
+      id: 'select',
+      header: () => (
+        <Checkbox
+          checked={selectedItems.length === data.length && data.length > 0}
+          indeterminate={selectedItems.length > 0 && selectedItems.length < data.length}
+          onChange={(checked) => onSelectAll?.(checked)}
+        />
+      ),
+      cell: ({ row }: { row: { original: {{ENTITY_NAME}} } }) => (
+        <Checkbox
+          checked={selectedItems.includes(row.original.id)}
+          onChange={(checked) => onSelectItem?.(row.original.id, checked)}
+        />
+      ),
+      enableSorting: false,
+      size: 50
+    }] : []),
+
+    {{#each FIELDS}}
+    {{#if showInList}}
+    // Columna: {{label}}
+    {
+      id: '{{name}}',
+      header: () => (
+        <div className="flex items-center space-x-1">
+          <span>{{label}}</span>
+          {{#if sortable}}
+          {onSort && (
+            <button
+              onClick={() => onSort('{{name}}')}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              {sortField === '{{name}}' ? (
+                sortDirection === 'asc' ? (
+                  <ChevronUpIcon className="w-4 h-4" />
+                ) : (
+                  <ChevronDownIcon className="w-4 h-4" />
+                )
+              ) : (
+                <ChevronUpIcon className="w-4 h-4 opacity-50" />
+              )}
+            </button>
+          )}
+          {{/if}}
+        </div>
+      ),
+      accessorKey: '{{name}}',
+      {{#if sortable}}enableSorting: true,{{else}}enableSorting: false,{{/if}}
+      cell: ({ getValue, row }: { getValue: () => any; row: { original: {{ENTITY_NAME}} } }) => {
+        const value = getValue();
+        
+        {{#if (eq type 'date')}}
+        if (!value) return <span className="text-gray-400">-</span>;
+        return (
+          <span className="text-sm">
+            {format(new Date(value), 'dd/MM/yyyy', { locale: es })}
+          </span>
+        );
+        
+        {{else if (eq type 'boolean')}}
+        return (
+          <Badge variant={value ? 'success' : 'secondary'}>
+            {value ? 'Sí' : 'No'}
+          </Badge>
+        );
+        
+        {{else if (eq type 'number')}}
+        if (value === null || value === undefined) return <span className="text-gray-400">-</span>;
+        return (
+          <span className="text-sm font-mono">
+            {{#if (includes name 'precio')}}
+            ${value.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+            {{else}}
+            {value.toLocaleString('es-ES')}
+            {{/if}}
+          </span>
+        );
+        
+        {{else if (eq type 'relation')}}
+        if (!value) return <span className="text-gray-400">-</span>;
+        
+        {{#if relation.multiple}}
+        if (Array.isArray(value)) {
+          return (
+            <div className="flex flex-wrap gap-1">
+              {value.slice(0, 2).map((item, index) => (
+                <Badge key={index} variant="outline" size="sm">
+                  {item.{{relation.displayField}} }
+                </Badge>
+              ))}
+              {value.length > 2 && (
+                <Badge variant="secondary" size="sm">
+                  +{value.length - 2}
+                </Badge>
+              )}
+            </div>
+          );
+        }
+        {{else}}
+        return (
+          <span className="text-sm">
+            {value.{{relation.displayField}} || '-'}
+          </span>
+        );
+        {{/if}}
+        
+        {{else if (eq type 'file')}}
+        if (!value) return <span className="text-gray-400">-</span>;
+        return (
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            Ver archivo
+          </a>
+        );
+        
+        {{else if (eq type 'email')}}
+        if (!value) return <span className="text-gray-400">-</span>;
+        return (
+          <a
+            href={`mailto:${value}`}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            {value}
+          </a>
+        );
+        
+        {{else}}
+        if (!value) return <span className="text-gray-400">-</span>;
+        
+        // Texto largo - truncar si es necesario
+        const text = String(value);
+        if (text.length > 50) {
+          return (
+            <span 
+              className="text-sm cursor-help" 
+              title={text}
+            >
+              {text.substring(0, 50)}...
+            </span>
+          );
+        }
+        
+        return <span className="text-sm">{text}</span>;
+        {{/if}}
+      }
+    },
+    
+    {{/if}}
+    {{/each}}
+
+    // Columna de acciones
+    {
+      id: 'actions',
+      header: 'Acciones',
+      enableSorting: false,
+      size: 120,
+      cell: ({ row }: { row: { original: {{ENTITY_NAME}} } }) => (
+        <div className="flex items-center space-x-1">
+          {{#if PERMISSIONS.read}}
+          {permissions.read && onView && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onView(row.original.id)}
+              title="Ver detalles"
+            >
+              <EyeIcon className="w-4 h-4" />
+            </Button>
+          )}
+          {{/if}}
+          
+          {{#if PERMISSIONS.update}}
+          {permissions.update && onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(row.original.id)}
+              title="Editar"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </Button>
+          )}
+          {{/if}}
+          
+          {{#if PERMISSIONS.delete}}
+          {permissions.delete && onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(row.original.id)}
+              title="Eliminar"
+              className="text-red-600 hover:text-red-700"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </Button>
+          )}
+          {{/if}}
+        </div>
+      )
+    }
+  ], [
+    data,
+    selectedItems,
+    sortField,
+    sortDirection,
+    onSort,
+    onSelectItem,
+    onSelectAll,
+    onView,
+    onEdit,
+    onDelete,
+    permissions
+  ]);
+
+  if (data.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">No hay datos para mostrar</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column.id}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  style={ { width: column.size ? `${column.size}px` : undefined } }
+                >
+                  {typeof column.header === 'function' ? column.header() : column.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {isLoading ? (
+              <tr>
+                <td colSpan={columns.length} className="px-6 py-12 text-center">
+                  <LoadingSpinner size="lg" />
+                </td>
+              </tr>
+            ) : (
+              data.map((row, index) => (
+                <tr
+                  key={row.id}
+                  className={`hover:bg-gray-50 ${
+                    selectedItems.includes(row.id) ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  {columns.map((column) => (
+                    <td
+                      key={column.id}
+                      className="px-6 py-4 whitespace-nowrap"
+                      style={ { width: column.size ? `${column.size}px` : undefined } }
+                    >
+                      {column.cell({ 
+                        getValue: () => column.accessorKey ? row[column.accessorKey as keyof {{ENTITY_NAME}}] : null,
+                        row: { original: row }
+                      })}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Información de filas en dispositivos móviles */}
+      <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 sm:hidden">
+        <p className="text-sm text-gray-700">
+          Mostrando {data.length} registro{data.length !== 1 ? 's' : ''}
+          {selectedItems.length > 0 && (
+            <span className="ml-2">
+              ({selectedItems.length} seleccionado{selectedItems.length !== 1 ? 's' : ''})
+            </span>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default {{ENTITY_NAME}}Table;
