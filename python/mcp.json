@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "nextjs-crud-generator-python": {
+      "command": "python",
+      "args": ["F:/mcpcreador/mcpcreadorv2/python/server.py"],
+      "cwd": "F:/mcpcreador/mcpcreadorv2",
+      "env": {
+        "PYTHONPATH": "F:/mcpcreador/mcpcreadorv2/python"
+      }
+    }
+  }
+}

@@ -1,0 +1,328 @@
+/**
+ * Componente de lista para {{ENTITY_NAME_PLURAL}}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+import React, { useState, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ArrowUpIcon,
+  ArrowDownIcon
+} from '@heroicons/react/24/outline';
+import { {{ENTITY_NAME}}Table } from './{{ENTITY_NAME}}Table';
+import { {{ENTITY_NAME}}Filter } from './{{ENTITY_NAME}}Filter';
+import { {{ENTITY_NAME}}Search } from './{{ENTITY_NAME}}Search';
+import { use{{ENTITY_NAME}} } from '../hooks/use{{ENTITY_NAME}}';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Pagination } from '@/components/ui/Pagination';
+import type { {{ENTITY_NAME}} } from '../types/{{ENTITY_NAME_LOWER}}';
+
+interface {{ENTITY_NAME}}ListProps {
+  initialData?: {{ENTITY_NAME}}[];
+  pageSize?: number;
+}
+
+export const {{ENTITY_NAME}}List: React.FC<{{ENTITY_NAME}}ListProps> = ({
+  initialData,
+  pageSize = 10
+}) => {
+  const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Hook personalizado para manejar CRUD
+  const {
+    data: {{ENTITY_NAME_LOWER}}s,
+    total,
+    isLoading,
+    error,
+    refetch,
+    delete{{ENTITY_NAME}},
+    bulkDelete
+  } = use{{ENTITY_NAME}}.useList({
+    page: currentPage,
+    limit: pageSize,
+    search: searchQuery,
+    sort: sortField,
+    order: sortDirection,
+    filters
+  });
+
+  // Handlers para acciones
+  const handleCreate = useCallback(() => {
+    {{#if PERMISSIONS.create}}
+    router.push('/{{ENTITY_NAME_LOWER}}/create');
+    {{else}}
+    // Crear deshabilitado
+    {{/if}}
+  }, [router]);
+
+  const handleEdit = useCallback((id: string) => {
+    {{#if PERMISSIONS.update}}
+    router.push(`/{{ENTITY_NAME_LOWER}}/${id}/edit`);
+    {{else}}
+    // Editar deshabilitado
+    {{/if}}
+  }, [router]);
+
+  const handleView = useCallback((id: string) => {
+    {{#if PERMISSIONS.read}}
+    router.push(`/{{ENTITY_NAME_LOWER}}/${id}`);
+    {{else}}
+    // Ver deshabilitado
+    {{/if}}
+  }, [router]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    {{#if PERMISSIONS.delete}}
+    try {
+      await delete{{ENTITY_NAME}}(id);
+      setDeleteConfirmId(null);
+      refetch();
+    } catch (error) {
+      console.error('Error al eliminar:', error);
+    }
+    {{else}}
+    // Eliminar deshabilitado
+    {{/if}}
+  }, [delete{{ENTITY_NAME}}, refetch]);
+
+  const handleBulkDelete = useCallback(async () => {
+    {{#if PERMISSIONS.delete}}
+    if (selectedItems.length === 0) return;
+    
+    try {
+      await bulkDelete(selectedItems);
+      setSelectedItems([]);
+      refetch();
+    } catch (error) {
+      console.error('Error al eliminar en lote:', error);
+    }
+    {{else}}
+    // Eliminar en lote deshabilitado
+    {{/if}}
+  }, [selectedItems, bulkDelete, refetch]);
+
+  const handleSort = useCallback((field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  }, [sortField, sortDirection]);
+
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  }, []);
+
+  const handleFilter = useCallback((newFilters: Record<string, any>) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSelectItem = useCallback((id: string, selected: boolean) => {
+    setSelectedItems(prev => 
+      selected 
+        ? [...prev, id]
+        : prev.filter(item => item !== id)
+    );
+  }, []);
+
+  const handleSelectAll = useCallback((selected: boolean) => {
+    setSelectedItems(selected ? {{ENTITY_NAME_LOWER}}s?.map(item => item.id) || [] : []);
+  }, [{{ENTITY_NAME_LOWER}}s]);
+
+  // Renderizado de loading
+  if (isLoading && !{{ENTITY_NAME_LOWER}}s) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  // Renderizado de error
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="flex">
+          <div className="text-red-800">
+            <h3 className="text-sm font-medium">Error al cargar {{ENTITY_NAME_PLURAL_LOWER}}</h3>
+            <p className="mt-1 text-sm">{error.message}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="mt-2"
+            >
+              Reintentar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{{ENTITY_NAME_PLURAL}}</h1>
+          <p className="text-gray-600">
+            {total ? `${total} registro${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}` : 'Sin registros'}
+          </p>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          {{#if PERMISSIONS.delete}}
+          {selectedItems.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkDelete}
+              className="text-red-600 border-red-300 hover:bg-red-50"
+            >
+              <TrashIcon className="w-4 h-4 mr-2" />
+              Eliminar ({selectedItems.length})
+            </Button>
+          )}
+          {{/if}}
+          
+          {{#if PERMISSIONS.create}}
+          <Button onClick={handleCreate}>
+            <PlusIcon className="w-4 h-4 mr-2" />
+            Crear {{ENTITY_NAME}}
+          </Button>
+          {{/if}}
+        </div>
+      </div>
+
+      {/* Controles de búsqueda y filtros */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <{{ENTITY_NAME}}Search
+            onSearch={handleSearch}
+            placeholder="Buscar {{ENTITY_NAME_LOWER}}s..."
+            isLoading={isLoading}
+          />
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={showFilters ? 'bg-gray-100' : ''}
+          >
+            <FunnelIcon className="w-4 h-4 mr-2" />
+            Filtros
+          </Button>
+        </div>
+      </div>
+
+      {/* Panel de filtros */}
+      {showFilters && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <{{ENTITY_NAME}}Filter
+            filters={filters}
+            onFilterChange={handleFilter}
+          />
+        </div>
+      )}
+
+      {/* Tabla de datos */}
+      { {{ENTITY_NAME_LOWER}}s && {{ENTITY_NAME_LOWER}}s.length > 0 ? (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <{{ENTITY_NAME}}Table
+            data={ {{ENTITY_NAME_LOWER}}s}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            selectedItems={selectedItems}
+            onSelectItem={handleSelectItem}
+            onSelectAll={handleSelectAll}
+            onEdit={handleEdit}
+            onView={handleView}
+            onDelete={(id) => setDeleteConfirmId(id)}
+            permissions={ {{json PERMISSIONS}} }
+            isLoading={isLoading}
+          />
+        </div>
+      ) : (
+        <EmptyState
+          title="No hay {{ENTITY_NAME_PLURAL_LOWER}}"
+          description="No se encontraron {{ENTITY_NAME_PLURAL_LOWER}} que coincidan con tu búsqueda."
+          icon={<MagnifyingGlassIcon className="w-12 h-12 text-gray-400" />}
+          {{#if PERMISSIONS.create}}
+          action={
+            <Button onClick={handleCreate}>
+              <PlusIcon className="w-4 h-4 mr-2" />
+              Crear primer {{ENTITY_NAME_LOWER}}
+            </Button>
+          }
+          {{/if}}
+        />
+      )}
+
+      {/* Paginación */}
+      {total > pageSize && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(total / pageSize)}
+          totalItems={total}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      <Modal
+        isOpen={deleteConfirmId !== null}
+        onClose={() => setDeleteConfirmId(null)}
+        title="Confirmar eliminación"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            ¿Estás seguro de que deseas eliminar este {{ENTITY_NAME_LOWER}}? Esta acción no se puede deshacer.
+          </p>
+          
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+            >
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+export default {{ENTITY_NAME}}List;

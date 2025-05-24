@@ -1,0 +1,436 @@
+/**
+ * Componente de formulario para {{ENTITY_NAME}}
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  ExclamationTriangleIcon
+} from '@heroicons/react/24/outline';
+import { {{ENTITY_NAME_LOWER}}Schema } from '../validation/{{ENTITY_NAME_LOWER}}';
+import { use{{ENTITY_NAME}} } from '../hooks/use{{ENTITY_NAME}}';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Select } from '@/components/ui/Select';
+import { Checkbox } from '@/components/ui/Checkbox';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { FileUpload } from '@/components/ui/FileUpload';
+import { RelationSelect } from '@/components/ui/RelationSelect';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Alert } from '@/components/ui/Alert';
+import type { {{ENTITY_NAME}} } from '../types/{{ENTITY_NAME_LOWER}}';
+
+interface {{ENTITY_NAME}}FormProps {
+  id?: string;
+  initialData?: Partial<{{ENTITY_NAME}}>;
+  mode: 'create' | 'edit';
+  onSuccess?: (data: {{ENTITY_NAME}}) => void;
+  onCancel?: () => void;
+}
+
+export const {{ENTITY_NAME}}Form: React.FC<{{ENTITY_NAME}}FormProps> = ({
+  id,
+  initialData,
+  mode,
+  onSuccess,
+  onCancel
+}) => {
+  const router = useRouter();
+  
+  // Hook personalizado para manejar CRUD
+  const {
+    data: {{ENTITY_NAME_LOWER}},
+    isLoading: isLoadingData,
+    create{{ENTITY_NAME}},
+    update{{ENTITY_NAME}},
+    isCreating,
+    isUpdating,
+    error
+  } = use{{ENTITY_NAME}}.useForm(id);
+
+  // Configuración del formulario con React Hook Form y Zod
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors, isValid, isDirty }
+  } = useForm<{{ENTITY_NAME}}>({
+    resolver: zodResolver({{ENTITY_NAME_LOWER}}Schema),
+    defaultValues: initialData || {},
+    mode: 'onChange'
+  });
+
+  // Cargar datos cuando se obtienen del servidor
+  useEffect(() => {
+    if ({{ENTITY_NAME_LOWER}} && mode === 'edit') {
+      reset({{ENTITY_NAME_LOWER}});
+    }
+  }, [{{ENTITY_NAME_LOWER}}, reset, mode]);
+
+  // Handler para envío del formulario
+  const onSubmit = async (data: {{ENTITY_NAME}}) => {
+    try {
+      let result: {{ENTITY_NAME}};
+      
+      if (mode === 'create') {
+        result = await create{{ENTITY_NAME}}(data);
+      } else {
+        result = await update{{ENTITY_NAME}}(id!, data);
+      }
+
+      if (onSuccess) {
+        onSuccess(result);
+      } else {
+        router.push('/{{ENTITY_NAME_LOWER}}');
+      }
+    } catch (error) {
+      console.error('Error al guardar:', error);
+    }
+  };
+
+  // Handler para cancelar
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      router.push('/{{ENTITY_NAME_LOWER}}');
+    }
+  };
+
+  // Loading state
+  if (isLoadingData && mode === 'edit') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  const isSubmitting = isCreating || isUpdating;
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancel}
+          >
+            <ArrowLeftIcon className="w-4 h-4 mr-2" />
+            Volver
+          </Button>
+          
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {mode === 'create' ? 'Crear' : 'Editar'} {{ENTITY_NAME}}
+            </h1>
+            <p className="text-gray-600">
+              {mode === 'create' 
+                ? 'Completa la información para crear un nuevo {{ENTITY_NAME_LOWER}}'
+                : 'Modifica la información del {{ENTITY_NAME_LOWER}}'
+              }
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+          
+          <Button
+            onClick={handleSubmit(onSubmit)}
+            disabled={!isValid || !isDirty || isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                {mode === 'create' ? 'Creando...' : 'Guardando...'}
+              </>
+            ) : (
+              <>
+                <CheckIcon className="w-4 h-4 mr-2" />
+                {mode === 'create' ? 'Crear' : 'Guardar'}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="error" className="mb-6">
+          <ExclamationTriangleIcon className="w-4 h-4" />
+          <span>Error: {error.message}</span>
+        </Alert>
+      )}
+
+      {/* Formulario */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {{#each FIELDS}}
+            
+            {/* Campo: {{label}} */}
+            <div className="{{#if (eq type 'textarea')}}md:col-span-2{{/if}}">
+              {{#if (eq type 'text')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    {{#if validation.min}}minLength={{{validation.min}}}{{/if}}
+                    {{#if validation.max}}maxLength={{{validation.max}}}{{/if}}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'email')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    type="email"
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'password')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field }) => (
+                  <Input
+                    {...field}
+                    type="password"
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    {{#if validation.min}}minLength={{{validation.min}}}{{/if}}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'number')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field: { onChange, value, ...field } }) => (
+                  <Input
+                    {...field}
+                    type="number"
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    value={value?.toString() || ''}
+                    onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+                    {{#if validation.min}}min={{{validation.min}}}{{/if}}
+                    {{#if validation.max}}max={{{validation.max}}}{{/if}}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'textarea')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field }) => (
+                  <Textarea
+                    {...field}
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    rows={4}
+                    {{#if validation.min}}minLength={{{validation.min}}}{{/if}}
+                    {{#if validation.max}}maxLength={{{validation.max}}}{{/if}}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'select')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    options={[
+                      {{#each validation.options}}
+                      { value: "{{this}}", label: "{{this}}" },
+                      {{/each}}
+                    ]}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'boolean')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field: { onChange, value, ...field } }) => (
+                  <Checkbox
+                    {...field}
+                    label="{{label}}"
+                    checked={value || false}
+                    onChange={onChange}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'date')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field: { onChange, value, ...field } }) => (
+                  <DatePicker
+                    {...field}
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    value={value}
+                    onChange={onChange}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'file')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field: { onChange, value, ...field } }) => (
+                  <FileUpload
+                    {...field}
+                    label="{{label}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    accept="{{validation.accept}}"
+                    value={value}
+                    onChange={onChange}
+                  />
+                )}
+              />
+              
+              {{else if (eq type 'relation')}}
+              <Controller
+                name="{{name}}"
+                control={control}
+                render={({ field: { onChange, value, ...field } }) => (
+                  <RelationSelect
+                    {...field}
+                    label="{{label}}"
+                    placeholder="{{placeholder}}"
+                    required={{{required}}}
+                    error={errors.{{name}}?.message}
+                    disabled={isSubmitting}
+                    endpoint="{{relation.endpoint}}"
+                    displayField="{{relation.displayField}}"
+                    valueField="{{relation.valueField}}"
+                    searchFields={[{{#each relation.searchFields}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]}
+                    multiple={{{relation.multiple}}}
+                    preload={{{relation.preload}}}
+                    minChars={{{relation.minChars}}}
+                    allowCreate={{{relation.allowCreate}}}
+                    value={value}
+                    onChange={onChange}
+                  />
+                )}
+              />
+              {{/if}}
+            </div>
+            
+            {{/each}}
+          </div>
+        </div>
+
+        {/* Acciones del formulario (móvil) */}
+        <div className="block md:hidden bg-white shadow rounded-lg p-4">
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            
+            <Button
+              type="submit"
+              disabled={!isValid || !isDirty || isSubmitting}
+              className="flex-1"
+            >
+              {isSubmitting ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  {mode === 'create' ? 'Creando...' : 'Guardando...'}
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="w-4 h-4 mr-2" />
+                  {mode === 'create' ? 'Crear' : 'Guardar'}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Indicador de cambios no guardados */}
+        {isDirty && !isSubmitting && (
+          <div className="fixed bottom-4 right-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-lg">
+            <div className="flex items-center space-x-2">
+              <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600" />
+              <span className="text-sm text-yellow-800">
+                Tienes cambios sin guardar
+              </span>
+            </div>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+};
+
+export default {{ENTITY_NAME}}Form;

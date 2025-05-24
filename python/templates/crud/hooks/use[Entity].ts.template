@@ -1,0 +1,505 @@
+/**
+ * Hook personalizado para {{ENTITY_NAME}} - Operaciones CRUD con React Query
+ * Generado automáticamente por MCP CRUD Generator
+ * Timestamp: {{TIMESTAMP}}
+ */
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import type {
+  {{ENTITY_NAME}},
+  Create{{ENTITY_NAME}}Input,
+  Update{{ENTITY_NAME}}Input,
+  {{ENTITY_NAME}}ListResponse,
+  {{ENTITY_NAME}}SearchParams,
+  Use{{ENTITY_NAME}}ListOptions,
+  Use{{ENTITY_NAME}}ListResult,
+  Use{{ENTITY_NAME}}Result,
+  Use{{ENTITY_NAME}}MutationResult
+} from '../types/{{ENTITY_NAME_LOWER}}';
+
+// Configuración base
+const API_BASE_URL = '/api/{{ENTITY_NAME_LOWER}}';
+const QUERY_KEY = '{{ENTITY_NAME_LOWER}}';
+
+/**
+ * Cliente para operaciones de API
+ */
+class {{ENTITY_NAME}}ApiClient {
+  private static async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  static async getList(params: {{ENTITY_NAME}}SearchParams = {}): Promise<{{ENTITY_NAME}}ListResponse> {
+    const searchParams = new URLSearchParams();
+    
+    if (params.page) searchParams.set('page', params.page.toString());
+    if (params.limit) searchParams.set('limit', params.limit.toString());
+    if (params.search) searchParams.set('search', params.search);
+    if (params.sort) searchParams.set('sort', params.sort);
+    if (params.order) searchParams.set('order', params.order);
+
+    // Agregar filtros
+    if (params.filters) {
+      Object.entries(params.filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          if (Array.isArray(value)) {
+            searchParams.set(key, value.join(','));
+          } else {
+            searchParams.set(key, value.toString());
+          }
+        }
+      });
+    }
+
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `?${queryString}` : '';
+    
+    return this.request<{{ENTITY_NAME}}ListResponse>(endpoint);
+  }
+
+  static async getById(id: string): Promise<{{ENTITY_NAME}}> {
+    return this.request<{{ENTITY_NAME}}>(`/${id}`);
+  }
+
+  static async create(data: Create{{ENTITY_NAME}}Input): Promise<{{ENTITY_NAME}}> {
+    return this.request<{{ENTITY_NAME}}>('', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async update(id: string, data: Update{{ENTITY_NAME}}Input): Promise<{{ENTITY_NAME}}> {
+    return this.request<{{ENTITY_NAME}}>(`/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async delete(id: string): Promise<void> {
+    await this.request<void>(`/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  static async bulkDelete(ids: string[]): Promise<void> {
+    await this.request<void>('/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
+}
+
+/**
+ * Hook para obtener lista de {{ENTITY_NAME_PLURAL_LOWER}} con filtros y paginación
+ */
+export function use{{ENTITY_NAME}}List(options: Use{{ENTITY_NAME}}ListOptions = {}): Use{{ENTITY_NAME}}ListResult {
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    sort,
+    order = 'asc',
+    filters,
+    enabled = true
+  } = options;
+
+  const queryKey = [
+    QUERY_KEY,
+    'list',
+    { page, limit, search, sort, order, filters }
+  ];
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching
+  } = useQuery({
+    queryKey,
+    queryFn: () => {{ENTITY_NAME}}ApiClient.getList({
+      page,
+      limit,
+      search,
+      sort,
+      order,
+      filters
+    }),
+    enabled,
+    staleTime: 30000, // 30 segundos
+    gcTime: 300000, // 5 minutos
+  });
+
+  return {
+    data: data?.data,
+    total: data?.pagination?.total || 0,
+    isLoading,
+    isError,
+    error: error as Error | null,
+    refetch,
+    isFetching
+  };
+}
+
+/**
+ * Hook para obtener un {{ENTITY_NAME_LOWER}} específico por ID
+ */
+export function use{{ENTITY_NAME}}(id: string | undefined): Use{{ENTITY_NAME}}Result {
+  const queryKey = [QUERY_KEY, id];
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useQuery({
+    queryKey,
+    queryFn: () => {{ENTITY_NAME}}ApiClient.getById(id!),
+    enabled: !!id,
+    staleTime: 60000, // 1 minuto
+    gcTime: 300000, // 5 minutos
+  });
+
+  return {
+    data,
+    isLoading,
+    isError,
+    error: error as Error | null,
+    refetch
+  };
+}
+
+/**
+ * Hook para mutaciones CRUD de {{ENTITY_NAME}}
+ */
+export function use{{ENTITY_NAME}}Mutations(): Use{{ENTITY_NAME}}MutationResult {
+  const queryClient = useQueryClient();
+
+  // Función para invalidar queries relacionadas
+  const invalidateQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+    
+    // También invalidar queries relacionadas si existen
+    {{#each FIELDS}}
+    {{#if (eq type 'relation')}}
+    queryClient.invalidateQueries({ queryKey: ['{{lower relation.relationEntity}}'] });
+    {{/if}}
+    {{/each}}
+  }, [queryClient]);
+
+  // Mutation para crear
+  const createMutation = useMutation({
+    mutationFn: {{ENTITY_NAME}}ApiClient.create,
+    onSuccess: (data) => {
+      // Agregar al cache de lista si existe
+      queryClient.setQueryData(
+        [QUERY_KEY, data.id],
+        data
+      );
+      
+      // Actualizar listas en cache
+      queryClient.setQueriesData(
+        { queryKey: [QUERY_KEY, 'list'] },
+        (oldData: {{ENTITY_NAME}}ListResponse | undefined) => {
+          if (!oldData) return oldData;
+          
+          return {
+            ...oldData,
+            data: [data, ...(oldData.data || [])],
+            pagination: {
+              ...oldData.pagination,
+              total: oldData.pagination.total + 1
+            }
+          };
+        }
+      );
+
+      invalidateQueries();
+    }
+  });
+
+  // Mutation para actualizar
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Update{{ENTITY_NAME}}Input }) =>
+      {{ENTITY_NAME}}ApiClient.update(id, data),
+    onSuccess: (data) => {
+      // Actualizar en cache individual
+      queryClient.setQueryData([QUERY_KEY, data.id], data);
+      
+      // Actualizar en listas
+      queryClient.setQueriesData(
+        { queryKey: [QUERY_KEY, 'list'] },
+        (oldData: {{ENTITY_NAME}}ListResponse | undefined) => {
+          if (!oldData) return oldData;
+          
+          return {
+            ...oldData,
+            data: oldData.data?.map(item => 
+              item.id === data.id ? data : item
+            ) || []
+          };
+        }
+      );
+
+      invalidateQueries();
+    }
+  });
+
+  // Mutation para eliminar
+  const deleteMutation = useMutation({
+    mutationFn: {{ENTITY_NAME}}ApiClient.delete,
+    onSuccess: (_, id) => {
+      // Remover del cache individual
+      queryClient.removeQueries({ queryKey: [QUERY_KEY, id] });
+      
+      // Remover de listas
+      queryClient.setQueriesData(
+        { queryKey: [QUERY_KEY, 'list'] },
+        (oldData: {{ENTITY_NAME}}ListResponse | undefined) => {
+          if (!oldData) return oldData;
+          
+          return {
+            ...oldData,
+            data: oldData.data?.filter(item => item.id !== id) || [],
+            pagination: {
+              ...oldData.pagination,
+              total: Math.max(0, oldData.pagination.total - 1)
+            }
+          };
+        }
+      );
+
+      invalidateQueries();
+    }
+  });
+
+  // Mutation para eliminación en lote
+  const bulkDeleteMutation = useMutation({
+    mutationFn: {{ENTITY_NAME}}ApiClient.bulkDelete,
+    onSuccess: (_, ids) => {
+      // Remover del cache individual
+      ids.forEach(id => {
+        queryClient.removeQueries({ queryKey: [QUERY_KEY, id] });
+      });
+      
+      // Remover de listas
+      queryClient.setQueriesData(
+        { queryKey: [QUERY_KEY, 'list'] },
+        (oldData: {{ENTITY_NAME}}ListResponse | undefined) => {
+          if (!oldData) return oldData;
+          
+          return {
+            ...oldData,
+            data: oldData.data?.filter(item => !ids.includes(item.id)) || [],
+            pagination: {
+              ...oldData.pagination,
+              total: Math.max(0, oldData.pagination.total - ids.length)
+            }
+          };
+        }
+      );
+
+      invalidateQueries();
+    }
+  });
+
+  // Funciones wrapper
+  const create{{ENTITY_NAME}} = useCallback(
+    (data: Create{{ENTITY_NAME}}Input): Promise<{{ENTITY_NAME}}> => {
+      return createMutation.mutateAsync(data);
+    },
+    [createMutation]
+  );
+
+  const update{{ENTITY_NAME}} = useCallback(
+    (id: string, data: Update{{ENTITY_NAME}}Input): Promise<{{ENTITY_NAME}}> => {
+      return updateMutation.mutateAsync({ id, data });
+    },
+    [updateMutation]
+  );
+
+  const delete{{ENTITY_NAME}} = useCallback(
+    (id: string): Promise<void> => {
+      return deleteMutation.mutateAsync(id);
+    },
+    [deleteMutation]
+  );
+
+  const bulkDelete = useCallback(
+    (ids: string[]): Promise<void> => {
+      return bulkDeleteMutation.mutateAsync(ids);
+    },
+    [bulkDeleteMutation]
+  );
+
+  return {
+    create{{ENTITY_NAME}},
+    update{{ENTITY_NAME}},
+    delete{{ENTITY_NAME}},
+    bulkDelete,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending || bulkDeleteMutation.isPending,
+    error: (
+      createMutation.error ||
+      updateMutation.error ||
+      deleteMutation.error ||
+      bulkDeleteMutation.error
+    ) as Error | null
+  };
+}
+
+/**
+ * Hook compuesto que combina lista y mutaciones
+ */
+export function use{{ENTITY_NAME}}Manager(listOptions: Use{{ENTITY_NAME}}ListOptions = {}) {
+  const listResult = use{{ENTITY_NAME}}List(listOptions);
+  const mutations = use{{ENTITY_NAME}}Mutations();
+
+  return {
+    ...listResult,
+    ...mutations,
+    // Función de conveniencia para refrescar después de mutaciones
+    refresh: listResult.refetch
+  };
+}
+
+/**
+ * Hook para formularios (creación/edición)
+ */
+export function use{{ENTITY_NAME}}Form(id?: string) {
+  const entityResult = use{{ENTITY_NAME}}(id);
+  const mutations = use{{ENTITY_NAME}}Mutations();
+
+  return {
+    // Datos del {{ENTITY_NAME_LOWER}} (para edición)
+    data: entityResult.data,
+    isLoadingData: entityResult.isLoading,
+    
+    // Mutaciones
+    create{{ENTITY_NAME}}: mutations.create{{ENTITY_NAME}},
+    update{{ENTITY_NAME}}: mutations.update{{ENTITY_NAME}},
+    
+    // Estados de carga
+    isCreating: mutations.isCreating,
+    isUpdating: mutations.isUpdating,
+    
+    // Errores
+    error: entityResult.error || mutations.error,
+    
+    // Refresh
+    refetch: entityResult.refetch
+  };
+}
+
+{{#each FIELDS}}
+{{#if (eq type 'relation')}}
+/**
+ * Hook para búsqueda de {{relation.relationEntity}} (para campos de relación)
+ */
+export function use{{relation.relationEntity}}Search() {
+  const search{{relation.relationEntity}} = useCallback(
+    async (query: string): Promise<{{relation.relationEntity}}[]> => {
+      if (query.length < {{relation.minChars}}) {
+        return [];
+      }
+
+      try {
+        const searchParams = new URLSearchParams({
+          q: query,
+          fields: '{{#each relation.searchFields}}{{this}}{{#unless @last}},{{/unless}}{{/each}}',
+          limit: '10'
+        });
+
+        const response = await fetch(`{{relation.endpoint}}/search?${searchParams}`);
+        
+        if (!response.ok) {
+          throw new Error('Error en la búsqueda');
+        }
+
+        const data = await response.json();
+        return data.data || [];
+      } catch (error) {
+        console.error('Error searching {{relation.relationEntity}}:', error);
+        return [];
+      }
+    },
+    []
+  );
+
+  return { search{{relation.relationEntity}} };
+}
+
+{{#if relation.preload}}
+/**
+ * Hook para obtener todas las opciones de {{relation.relationEntity}} (preload)
+ */
+export function use{{relation.relationEntity}}Options() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['{{lower relation.relationEntity}}', 'options'],
+    queryFn: async (): Promise<{{relation.relationEntity}}[]> => {
+      const response = await fetch('{{relation.endpoint}}/options');
+      
+      if (!response.ok) {
+        throw new Error('Error loading {{relation.relationEntity}} options');
+      }
+
+      const data = await response.json();
+      return data.data || [];
+    },
+    staleTime: 300000, // 5 minutos
+    gcTime: 600000, // 10 minutos
+  });
+
+  return {
+    options: data || [],
+    isLoading,
+    error: error as Error | null
+  };
+}
+{{/if}}
+
+{{/if}}
+{{/each}}
+
+// Objeto que agrupa todos los hooks para fácil importación
+export const use{{ENTITY_NAME}} = {
+  useList: use{{ENTITY_NAME}}List,
+  useOne: use{{ENTITY_NAME}},
+  useMutations: use{{ENTITY_NAME}}Mutations,
+  useManager: use{{ENTITY_NAME}}Manager,
+  useForm: use{{ENTITY_NAME}}Form,
+  {{#each FIELDS}}
+  {{#if (eq type 'relation')}}
+  use{{relation.relationEntity}}Search,
+  {{#if relation.preload}}
+  use{{relation.relationEntity}}Options,
+  {{/if}}
+  {{/if}}
+  {{/each}}
+};
+
+export default use{{ENTITY_NAME}};
