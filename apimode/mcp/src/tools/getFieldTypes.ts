@@ -1,6 +1,6 @@
-import { apiClient } from "../utils/apiClient";
-import { ResponseFormatter } from "../utils/responseFormatter";
-import { ToolResponse, FieldType } from "../types";
+import { apiClient } from "../utils/apiClient.js";
+import { ResponseFormatter } from "../utils/responseFormatter.js";
+import { ToolResponse, FieldType } from "../types/index.js";
 
 export class GetFieldTypesTool {
   static getSchema() {

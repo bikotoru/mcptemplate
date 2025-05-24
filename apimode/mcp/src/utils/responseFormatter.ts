@@ -1,4 +1,4 @@
-import { ToolResponse } from "../types";
+import { ToolResponse } from "../types/index.js";
 
 export class ResponseFormatter {
   static formatGenerationResult(data: any): ToolResponse {

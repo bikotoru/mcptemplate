@@ -1,6 +1,6 @@
-import { apiClient } from "../utils/apiClient";
-import { ResponseFormatter } from "../utils/responseFormatter";
-import { ToolResponse } from "../types";
+import { apiClient } from "../utils/apiClient.js";
+import { ResponseFormatter } from "../utils/responseFormatter.js";
+import { ToolResponse } from "../types/index.js";
 
 export class ValidateConfigTool {
   static getSchema() {

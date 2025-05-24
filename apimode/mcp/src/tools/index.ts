@@ -1,8 +1,10 @@
-import { GenerateCrudTool } from "./generateCrud";
-import { ValidateConfigTool } from "./validateConfig";
-import { GetFieldTypesTool } from "./getFieldTypes";
-import { GenerateExampleConfigTool } from "./generateExampleConfig";
-import { ToolResponse } from "../types";
+import { GenerateCrudTool } from "./generateCrud.js";
+import { ValidateConfigTool } from "./validateConfig.js";
+import { GetFieldTypesTool } from "./getFieldTypes.js";
+import { GenerateExampleConfigTool } from "./generateExampleConfig.js";
+import { ExecuteSqlTool } from "./executeSql.js";
+import { GetDatabaseInfoTool } from "./getDatabaseInfo.js";
+import { ToolResponse } from "../types/index.js";
 
 export interface MCPTool {
   getSchema(): any;
@@ -13,7 +15,9 @@ export const tools: Record<string, MCPTool> = {
   generate_crud: GenerateCrudTool,
   validate_config: ValidateConfigTool,
   get_field_types: GetFieldTypesTool,
-  generate_example_config: GenerateExampleConfigTool
+  generate_example_config: GenerateExampleConfigTool,
+  execute_sql: ExecuteSqlTool,
+  get_database_info: GetDatabaseInfoTool
 };
 
 export function getToolSchemas() {
@@ -32,5 +36,7 @@ export {
   GenerateCrudTool,
   ValidateConfigTool,
   GetFieldTypesTool,
-  GenerateExampleConfigTool
+  GenerateExampleConfigTool,
+  ExecuteSqlTool,
+  GetDatabaseInfoTool
 };

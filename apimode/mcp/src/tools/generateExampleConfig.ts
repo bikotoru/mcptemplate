@@ -1,6 +1,6 @@
-import { apiClient } from "../utils/apiClient";
-import { ResponseFormatter } from "../utils/responseFormatter";
-import { ExampleConfigArgs, ToolResponse } from "../types";
+import { apiClient } from "../utils/apiClient.js";
+import { ResponseFormatter } from "../utils/responseFormatter.js";
+import { ExampleConfigArgs, ToolResponse } from "../types/index.js";
 
 export class GenerateExampleConfigTool {
   static getSchema() {
